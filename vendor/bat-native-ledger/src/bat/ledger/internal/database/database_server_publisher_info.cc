@@ -57,6 +57,36 @@ bool DatabaseServerPublisherInfo::CreateIndexV7(
   return this->InsertIndex(transaction, kTableName, "publisher_key");
 }
 
+bool DatabaseServerPublisherInfo::CreateTableV21(
+    ledger::DBTransaction* transaction) {
+  DCHECK(transaction);
+
+  const std::string query = base::StringPrintf(
+      "CREATE TABLE %s "
+      "("
+      "publisher_key LONGVARCHAR PRIMARY KEY NOT NULL UNIQUE,"
+      "status INTEGER DEFAULT 0 NOT NULL,"
+      "excluded INTEGER DEFAULT 0 NOT NULL,"
+      "address TEXT NOT NULL,"
+      "updated_at INTEGER NOT NULL"
+      ")",
+      kTableName);
+
+  auto command = ledger::DBCommand::New();
+  command->type = ledger::DBCommand::Type::EXECUTE;
+  command->command = query;
+  transaction->commands.push_back(std::move(command));
+
+  return true;
+}
+
+bool DatabaseServerPublisherInfo::CreateIndexV21(
+    ledger::DBTransaction* transaction) {
+  DCHECK(transaction);
+
+  return this->InsertIndex(transaction, kTableName, "publisher_key");
+}
+
 bool DatabaseServerPublisherInfo::Migrate(
     ledger::DBTransaction* transaction,
     const int target) {
@@ -68,6 +98,9 @@ bool DatabaseServerPublisherInfo::Migrate(
     }
     case 15: {
       return MigrateToV15(transaction);
+    }
+    case 21: {
+      return MigrateToV21(transaction);
     }
     default: {
       return true;
@@ -105,6 +138,25 @@ bool DatabaseServerPublisherInfo::MigrateToV15(
   return banner_->Migrate(transaction, 15);
 }
 
+bool DatabaseServerPublisherInfo::MigrateToV21(
+    ledger::DBTransaction* transaction) {
+  DCHECK(transaction);
+
+  if (!DropTable(transaction, kTableName)) {
+    return false;
+  }
+
+  if (!CreateTableV21(transaction)) {
+    return false;
+  }
+
+  if (!CreateIndexV21(transaction)) {
+    return false;
+  }
+
+  return banner_->Migrate(transaction, 21);
+}
+
 void DatabaseServerPublisherInfo::DeleteAll(ledger::ResultCallback callback) {
   auto transaction = ledger::DBTransaction::New();
   const std::string query = base::StringPrintf("DELETE FROM %s", kTableName);
@@ -129,8 +181,12 @@ void DatabaseServerPublisherInfo::InsertOrUpdatePartialList(
     return;
   }
 
+  uint64_t now_seconds = static_cast<uint64_t>(base::Time::Now().ToDoubleT());
+
   const std::string base_query = base::StringPrintf(
-      "INSERT OR REPLACE INTO %s VALUES ",
+      "INSERT OR REPLACE INTO %s "
+      "(publisher_key, status, excluded, address, updated_at) "
+      "VALUES ",
       kTableName);
 
   size_t i = 0;
@@ -142,11 +198,12 @@ void DatabaseServerPublisherInfo::InsertOrUpdatePartialList(
     }
 
     main_query += base::StringPrintf(
-        R"(("%s",%d,%d,"%s"))",
+        R"(("%s",%d,%d,"%s",%llu))",
         info.publisher_key.c_str(),
         static_cast<int>(info.status),
         info.excluded,
-        info.address.c_str());
+        info.address.c_str(),
+        now_seconds);
     main_query += (i == kBatchLimit - 1) ? ";" : ",";
     i++;
   }
@@ -198,7 +255,7 @@ void DatabaseServerPublisherInfo::OnGetRecordBanner(
     ledger::GetServerPublisherInfoCallback callback) {
   auto transaction = ledger::DBTransaction::New();
   const std::string query = base::StringPrintf(
-      "SELECT status, excluded, address "
+      "SELECT status, excluded, address, updated_at "
       "FROM %s WHERE publisher_key=?",
       kTableName);
 
@@ -211,7 +268,8 @@ void DatabaseServerPublisherInfo::OnGetRecordBanner(
   command->record_bindings = {
       ledger::DBCommand::RecordBindingType::INT_TYPE,
       ledger::DBCommand::RecordBindingType::BOOL_TYPE,
-      ledger::DBCommand::RecordBindingType::STRING_TYPE
+      ledger::DBCommand::RecordBindingType::STRING_TYPE,
+      ledger::DBCommand::RecordBindingType::INT_TYPE
   };
 
   transaction->commands.push_back(std::move(command));
@@ -255,6 +313,7 @@ void DatabaseServerPublisherInfo::OnGetRecord(
       GetIntColumn(record, 0));
   info->excluded = GetBoolColumn(record, 1);
   info->address = GetStringColumn(record, 2);
+  info->updated_at = GetIntColumn(record, 3);
   info->banner = banner.Clone();
 
   callback(std::move(info));

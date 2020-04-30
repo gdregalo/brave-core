@@ -104,6 +104,9 @@ bool DatabaseServerPublisherBanner::Migrate(
     case 15: {
       return MigrateToV15(transaction);
     }
+    case 21: {
+      return MigrateToV21(transaction);
+    }
     default: {
       return true;
     }
@@ -187,6 +190,26 @@ bool DatabaseServerPublisherBanner::MigrateToV15(
   }
 
   if (!amounts_->Migrate(transaction, 15)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool DatabaseServerPublisherBanner::MigrateToV21(
+    ledger::DBTransaction* transaction) {
+  DCHECK(transaction);
+
+  auto command = ledger::DBCommand::New();
+  command->type = ledger::DBCommand::Type::EXECUTE;
+  command->command = base::StringPrintf("DELETE FROM %s", kTableName);
+  transaction->commands.push_back(std::move(command));
+
+  if (!links_->Migrate(transaction, 21)) {
+    return false;
+  }
+
+  if (!amounts_->Migrate(transaction, 21)) {
     return false;
   }
 

@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include "bat/ledger/internal/publisher/prefix_iterator.h"
 #include "bat/ledger/ledger.h"
 
 namespace bat_ledger {
@@ -30,6 +31,7 @@ class DatabaseMultiTables;
 class DatabasePendingContribution;
 class DatabasePromotion;
 class DatabasePublisherInfo;
+class DatabasePublisherList;
 class DatabaseRecurringTip;
 class DatabaseServerPublisherInfo;
 class DatabaseSKUOrder;
@@ -275,6 +277,11 @@ class Database {
   /**
    * SERVER PUBLISHER INFO
    */
+  void ResetPublisherListPrefixes(
+      braveledger_publisher::PrefixIterator begin,
+      braveledger_publisher::PrefixIterator end,
+      ledger::ResultCallback callback);
+
   void ClearServerPublisherList(ledger::ResultCallback callback);
 
   void InsertServerPublisherList(
@@ -360,6 +367,7 @@ class Database {
   std::unique_ptr<DatabaseMediaPublisherInfo> media_publisher_info_;
   std::unique_ptr<DatabaseMultiTables> multi_tables_;
   std::unique_ptr<DatabasePublisherInfo> publisher_info_;
+  std::unique_ptr<DatabasePublisherList> publisher_list_;
   std::unique_ptr<DatabaseRecurringTip> recurring_tip_;
   std::unique_ptr<DatabaseServerPublisherInfo> server_publisher_info_;
   std::unique_ptr<DatabaseSKUOrder> sku_order_;

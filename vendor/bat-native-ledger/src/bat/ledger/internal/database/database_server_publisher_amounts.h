@@ -41,6 +41,8 @@ class DatabaseServerPublisherAmounts: public DatabaseTable {
 
   bool MigrateToV15(ledger::DBTransaction* transaction);
 
+  bool MigrateToV21(ledger::DBTransaction* transaction);
+
   void OnGetRecord(
       ledger::DBCommandResponsePtr response,
       ServerPublisherAmountsCallback callback);

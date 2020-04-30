@@ -49,6 +49,12 @@ class DatabaseServerPublisherInfo: public DatabaseTable {
 
   bool MigrateToV15(ledger::DBTransaction* transaction);
 
+  bool CreateTableV21(ledger::DBTransaction* transaction);
+
+  bool CreateIndexV21(ledger::DBTransaction* transaction);
+
+  bool MigrateToV21(ledger::DBTransaction* transaction);
+
   void OnGetRecordBanner(
       ledger::PublisherBannerPtr banner,
       const std::string& publisher_key,

@@ -20,6 +20,7 @@
 #include "bat/ledger/internal/database/database.h"
 #include "bat/ledger/internal/logging.h"
 #include "bat/ledger/internal/properties/wallet_info_properties.h"
+#include "bat/ledger/internal/publisher/prefix_iterator.h"
 #include "bat/ledger/internal/wallet/wallet.h"
 #include "bat/ledger/ledger_client.h"
 #include "bat/ledger/ledger.h"
@@ -473,6 +474,11 @@ class LedgerImpl : public ledger::Ledger {
       const std::string& publisher_key,
       ledger::ResultCallback callback);
 
+  void ResetPublisherListPrefixes(
+      braveledger_publisher::PrefixIterator begin,
+      braveledger_publisher::PrefixIterator end,
+      ledger::ResultCallback callback);
+
   void ClearServerPublisherList(ledger::ResultCallback callback);
 
   void InsertServerPublisherList(
@@ -484,8 +490,8 @@ class LedgerImpl : public ledger::Ledger {
       ledger::ResultCallback callback);
 
   void GetServerPublisherInfo(
-    const std::string& publisher_key,
-    ledger::GetServerPublisherInfoCallback callback);
+      const std::string& publisher_key,
+      ledger::GetServerPublisherInfoCallback callback);
 
   bool IsPublisherConnectedOrVerified(const ledger::PublisherStatus status);
 
@@ -815,6 +821,11 @@ class LedgerImpl : public ledger::Ledger {
   void OnDatabaseInitialized(
       const ledger::Result result,
       ledger::ResultCallback callback);
+
+  void OnServerPublisherInfoLoaded(
+      ledger::ServerPublisherInfoPtr server_info,
+      const std::string& publisher_key,
+      ledger::GetServerPublisherInfoCallback callback);
 
   void OnPublisherStateLoaded(
       ledger::Result result,

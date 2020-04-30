@@ -26,6 +26,7 @@ struct PublisherSettings;
 namespace braveledger_publisher {
 
 class PublisherServerList;
+class PublisherListFetcher;
 
 class Publisher {
  public:
@@ -33,8 +34,12 @@ class Publisher {
 
   ~Publisher();
 
-  // Called when timer is triggered
-  void OnTimer(uint32_t timer_id);
+  bool ShouldFetchServerPublisherInfo(
+      ledger::ServerPublisherInfo* server_info);
+
+  void FetchServerPublisherInfo(
+      const std::string& publisher_key,
+      ledger::GetServerPublisherInfoCallback callback);
 
   void RefreshPublisher(
       const std::string& publisher_key,
@@ -129,15 +134,6 @@ class Publisher {
   bool IsConnectedOrVerified(const ledger::PublisherStatus status);
 
  private:
-  void OnRefreshPublisher(
-    const ledger::Result result,
-    const std::string& publisher_key,
-    ledger::OnRefreshPublisherCallback callback);
-
-  void OnRefreshPublisherServerPublisher(
-    ledger::ServerPublisherInfoPtr info,
-    ledger::OnRefreshPublisherCallback callback);
-
   void onPublisherActivitySave(uint64_t windowId,
                                const ledger::VisitData& visit_data,
                                ledger::Result result,
@@ -233,7 +229,7 @@ class Publisher {
 
   bat_ledger::LedgerImpl* ledger_;  // NOT OWNED
   std::unique_ptr<ledger::PublisherSettingsProperties> state_;
-  std::unique_ptr<PublisherServerList> server_list_;
+  std::unique_ptr<PublisherListFetcher> publisher_list_fetcher_;
 
   double a_;
 

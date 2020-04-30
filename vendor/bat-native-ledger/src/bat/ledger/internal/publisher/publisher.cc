@@ -12,11 +12,13 @@
 
 #include "base/guid.h"
 #include "base/strings/stringprintf.h"
+#include "base/time/time.h"
 #include "bat/ledger/global_constants.h"
 #include "bat/ledger/internal/ledger_impl.h"
 #include "bat/ledger/internal/properties/publisher_settings_properties.h"
 #include "bat/ledger/internal/properties/report_balance_properties.h"
 #include "bat/ledger/internal/publisher/publisher.h"
+#include "bat/ledger/internal/publisher/publisher_list_fetcher.h"
 #include "bat/ledger/internal/publisher/publisher_server_list.h"
 #include "bat/ledger/internal/state/publisher_settings_state.h"
 #include "bat/ledger/internal/static_values.h"
@@ -37,67 +39,80 @@
 using std::placeholders::_1;
 using std::placeholders::_2;
 
+namespace {
+
+// TODO(zenparsing): This should probably be an option in option_keys.h
+constexpr int64_t kServerInfoExpiresSeconds = 60 * 60 * 5;
+
+}  // namespace
+
 namespace braveledger_publisher {
 
 Publisher::Publisher(bat_ledger::LedgerImpl* ledger):
   ledger_(ledger),
   state_(new ledger::PublisherSettingsProperties),
-  server_list_(std::make_unique<PublisherServerList>(ledger)) {
+  publisher_list_fetcher_(std::make_unique<PublisherListFetcher>(ledger)) {
   calcScoreConsts(state_->min_page_time_before_logging_a_visit);
 }
 
 Publisher::~Publisher() {
 }
 
-void Publisher::OnTimer(uint32_t timer_id) {
-  server_list_->OnTimer(timer_id);
+bool Publisher::ShouldFetchServerPublisherInfo(
+    ledger::ServerPublisherInfo* server_info) {
+  if (!server_info) {
+    return true;
+  }
+
+  base::TimeDelta age =
+      base::Time::Now() -
+      base::Time::FromDoubleT(server_info->updated_at);
+
+  if (age.InSeconds() < 0) {
+    // TODO(zenparsing): A negative number here indicates that we
+    // have a problem with how we are storing the time, but could
+    // also indicate that the data is corrupted somehow. How should
+    // we handle this? If the data is just corrupted, then we should
+    // refresh. If we have a problem storing the data then we're
+    // screwed and our refresh mechanism will never work. Is the
+    // following good enough? It could lead to a situation in release
+    // where we never refresh any records. Perhaps we should also
+    // log the error somehow?
+    NOTREACHED();
+  }
+
+  return age.InSeconds() > kServerInfoExpiresSeconds;
+}
+
+void Publisher::FetchServerPublisherInfo(
+    const std::string& publisher_key,
+    ledger::GetServerPublisherInfoCallback callback) {
+  // TODO(zenparsing): Here is where the magic is. Fetch
+  // the data from a URL (we'll want a separate class for
+  // this), load it into the database through ledger, and
+  // then call the callback with the info. Don't go back
+  // through ledger to get the database record (leave a
+  // note to his effect).
 }
 
 void Publisher::RefreshPublisher(
-      const std::string& publisher_key,
-      ledger::OnRefreshPublisherCallback callback) {
-  server_list_->Start(std::bind(&Publisher::OnRefreshPublisher,
-          this,
-          _1,
-          publisher_key,
-          callback));
-}
-
-void Publisher::OnRefreshPublisher(
-    const ledger::Result result,
     const std::string& publisher_key,
     ledger::OnRefreshPublisherCallback callback) {
-  if (result != ledger::Result::LEDGER_OK) {
-    callback(ledger::PublisherStatus::NOT_VERIFIED);
-    return;
-  }
-
-  const auto server_callback =
-    std::bind(&Publisher::OnRefreshPublisherServerPublisher,
-              this,
-              _1,
-              callback);
-
-  ledger_->GetServerPublisherInfo(publisher_key, server_callback);
-}
-
-void Publisher::OnRefreshPublisherServerPublisher(
-    ledger::ServerPublisherInfoPtr info,
-    ledger::OnRefreshPublisherCallback callback) {
-  auto status = ledger::PublisherStatus::NOT_VERIFIED;
-  if (info) {
-    status = info->status;
-  }
-  callback(status);
+  FetchServerPublisherInfo(
+    publisher_key,
+    [callback](auto server_info) {
+      callback(server_info
+          ? server_info->status
+          : ledger::PublisherStatus::NOT_VERIFIED);
+    });
 }
 
 void Publisher::SetPublisherServerListTimer(const bool rewards_enabled) {
-  if (!rewards_enabled) {
-    server_list_->ClearTimer();
-    return;
+  if (rewards_enabled) {
+    publisher_list_fetcher_->StartAutoUpdate();
+  } else {
+    publisher_list_fetcher_->StopAutoUpdate();
   }
-
-  server_list_->SetTimer(false);
 }
 
 void Publisher::calcScoreConsts(const uint64_t& min_duration_seconds) {
@@ -160,6 +175,10 @@ void Publisher::SaveVisit(
                 window_id,
                 callback);
 
+  // TODO(zenparsing): High-efficiency use case. I think that this
+  // is the only one. Call ledger method to search for the hash
+  // prefix. If not found, callback with empty publisher info. If
+  // found, call GetServerPublisherInfo.
   ledger_->GetServerPublisherInfo(publisher_key, server_callback);
 }
 
@@ -890,6 +909,9 @@ void Publisher::GetPublisherBanner(
                 publisher_key,
                 callback);
 
+  // TODO(zenparsing): High-integrity use case (I think; this is
+  // only called from the front-end after we know that the publisher
+  // key is valid.
   ledger_->GetServerPublisherInfo(publisher_key, banner_callback);
 }
 

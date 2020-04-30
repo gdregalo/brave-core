@@ -24,6 +24,7 @@ class DatabaseMediaPublisherInfo;
 class DatabasePendingContribution;
 class DatabasePromotion;
 class DatabasePublisherInfo;
+class DatabasePublisherList;
 class DatabaseRecurringTip;
 class DatabaseServerPublisherInfo;
 class DatabaseSKUOrder;
@@ -50,6 +51,7 @@ class DatabaseMigration {
   std::unique_ptr<DatabasePendingContribution> pending_contribution_;
   std::unique_ptr<DatabasePromotion> promotion_;
   std::unique_ptr<DatabasePublisherInfo> publisher_info_;
+  std::unique_ptr<DatabasePublisherList> publisher_list_;
   std::unique_ptr<DatabaseRecurringTip> recurring_tip_;
   std::unique_ptr<DatabaseServerPublisherInfo> server_publisher_info_;
   std::unique_ptr<DatabaseSKUOrder> sku_order_;

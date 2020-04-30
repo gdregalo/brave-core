@@ -893,7 +893,6 @@ void LedgerImpl::OneTimeTip(
 
 void LedgerImpl::OnTimer(uint32_t timer_id) {
   bat_contribution_->OnTimer(timer_id);
-  bat_publisher_->OnTimer(timer_id);
   bat_promotion_->OnTimer(timer_id);
 }
 
@@ -1383,6 +1382,13 @@ void LedgerImpl::DeleteActivityInfo(
   bat_database_->DeleteActivityInfo(publisher_key, callback);
 }
 
+void LedgerImpl::ResetPublisherListPrefixes(
+    braveledger_publisher::PrefixIterator begin,
+    braveledger_publisher::PrefixIterator end,
+    ledger::ResultCallback callback) {
+  bat_database_->ResetPublisherListPrefixes(begin, end, callback);
+}
+
 void LedgerImpl::ClearServerPublisherList(ledger::ResultCallback callback) {
   bat_database_->ClearServerPublisherList(callback);
 }
@@ -1402,7 +1408,21 @@ void LedgerImpl::InsertPublisherBannerList(
 void LedgerImpl::GetServerPublisherInfo(
     const std::string& publisher_key,
     ledger::GetServerPublisherInfoCallback callback) {
-  bat_database_->GetServerPublisherInfo(publisher_key, callback);
+  bat_database_->GetServerPublisherInfo(
+      publisher_key,
+      std::bind(&LedgerImpl::OnServerPublisherInfoLoaded,
+          this, _1, publisher_key, callback));
+}
+
+void LedgerImpl::OnServerPublisherInfoLoaded(
+    ledger::ServerPublisherInfoPtr server_info,
+    const std::string& publisher_key,
+    ledger::GetServerPublisherInfoCallback callback) {
+  if (bat_publisher_->ShouldFetchServerPublisherInfo(server_info.get())) {
+    bat_publisher_->FetchServerPublisherInfo(publisher_key, callback);
+  } else {
+    callback(std::move(server_info));
+  }
 }
 
 bool LedgerImpl::IsPublisherConnectedOrVerified(
