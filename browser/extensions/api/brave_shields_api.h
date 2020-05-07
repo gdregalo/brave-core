@@ -84,6 +84,18 @@ class BraveShieldsGetCosmeticFilteringEnabledFunction
   ResponseAction Run() override;
 };
 
+class BraveShieldsGet1pCosmeticFilteringEnabledFunction :
+    public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("braveShields.get1pCosmeticFilteringEnabled",
+                             UNKNOWN)
+
+ protected:
+  ~BraveShieldsGet1pCosmeticFilteringEnabledFunction() override {}
+
+  ResponseAction Run() override;
+};
+
 class BraveShieldsSetAdControlTypeFunction : public ExtensionFunction {
  public:
   DECLARE_EXTENSION_FUNCTION("braveShields.setAdControlType", UNKNOWN)

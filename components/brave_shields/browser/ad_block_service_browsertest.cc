@@ -30,6 +30,7 @@
 #include "net/dns/mock_host_resolver.h"
 
 using brave_shields::features::kBraveAdblockCosmeticFiltering;
+using brave_shields::features::kBrave1pCosmeticFiltering;
 using content::BrowserThread;
 using extensions::ExtensionBrowserTest;
 
@@ -798,6 +799,16 @@ class CosmeticFilteringDisabledTest : public AdBlockServiceTest {
   base::test::ScopedFeatureList feature_list_;
 };
 
+class Hide1pContentTest : public AdBlockServiceTest {
+ public:
+  Hide1pContentTest() {
+    feature_list_.InitAndEnableFeature(kBrave1pCosmeticFiltering);
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
 // Ensure no cosmetic filtering occurs when the feature flag is disabled
 IN_PROC_BROWSER_TEST_F(CosmeticFilteringDisabledTest, CosmeticFilteringSimple) {
   UpdateAdBlockInstanceWithRules(
@@ -890,6 +901,28 @@ IN_PROC_BROWSER_TEST_F(AdBlockServiceTest,
   ASSERT_TRUE(ExecuteScriptAndExtractBool(
               contents,
               "checkSelector('.fpsponsored', 'display', 'block')",
+              &as_expected));
+  EXPECT_TRUE(as_expected);
+}
+
+// Test cosmetic filtering bypasses 1st party checks when toggled
+IN_PROC_BROWSER_TEST_F(Hide1pContentTest,
+                       CosmeticFilteringHide1pContent) {
+  UpdateAdBlockInstanceWithRules("b.com##.fpsponsored\n");
+
+  WaitForBraveExtensionShieldsDataReady();
+
+  GURL tab_url = embedded_test_server()->GetURL("b.com",
+                                                "/cosmetic_filtering.html");
+  ui_test_utils::NavigateToURL(browser(), tab_url);
+
+  content::WebContents* contents =
+    browser()->tab_strip_model()->GetActiveWebContents();
+
+  bool as_expected = false;
+  ASSERT_TRUE(ExecuteScriptAndExtractBool(
+              contents,
+              "checkSelector('.fpsponsored', 'display', 'none')",
               &as_expected));
   EXPECT_TRUE(as_expected);
 }

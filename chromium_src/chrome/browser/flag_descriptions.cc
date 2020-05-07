@@ -24,6 +24,10 @@ const char kBraveNTPBrandedWallpaperDemoDescription[] =
 const char kBraveAdblockCosmeticFilteringName[] = "Enable cosmetic filtering";
 const char kBraveAdblockCosmeticFilteringDescription[] =
     "Enable support for cosmetic filtering";
+const char kBrave1pCosmeticFilteringName[] =
+    "Enable first-party cosmetic filtering";
+const char kBrave1pCosmeticFilteringDescription[] =
+    "Hide first party elements like sponsored or promoted content";
 const char kBraveSpeedreaderName[] = "Enable SpeedReader";
 const char kBraveSpeedreaderDescription[] =
     "Enables faster loading of simplified article-style web pages.";

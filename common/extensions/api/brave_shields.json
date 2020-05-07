@@ -178,6 +178,23 @@
         ]
       },
       {
+        "name": "get1pCosmeticFilteringEnabled",
+        "type": "function",
+        "description": "Get whether or not cosmetic filtering is enabled for first-party content",
+        "parameters": [
+          {
+            "type": "function",
+            "name": "callback",
+            "parameters": [
+              {
+                "name": "enabled",
+                "type": "boolean"
+              }
+            ]
+          }
+        ]
+      },
+      {
         "name": "setAdControlType",
         "type": "function",
         "description": "Set ads control type for a url",

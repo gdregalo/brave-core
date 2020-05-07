@@ -38,6 +38,7 @@ using brave_shields::ControlType;
 using brave_shields::ControlTypeFromString;
 using brave_shields::ControlTypeToString;
 using brave_shields::features::kBraveAdblockCosmeticFiltering;
+using brave_shields::features::kBrave1pCosmeticFiltering;
 
 namespace extensions {
 namespace api {
@@ -217,6 +218,14 @@ ExtensionFunction::ResponseAction
 BraveShieldsGetCosmeticFilteringEnabledFunction::Run() {
   auto result = std::make_unique<base::Value>(
       base::FeatureList::IsEnabled(kBraveAdblockCosmeticFiltering));
+
+  return RespondNow(OneArgument(std::move(result)));
+}
+
+ExtensionFunction::ResponseAction
+BraveShieldsGet1pCosmeticFilteringEnabledFunction::Run() {
+  auto result = std::make_unique<base::Value>(
+      base::FeatureList::IsEnabled(kBrave1pCosmeticFiltering));
 
   return RespondNow(OneArgument(std::move(result)));
 }
