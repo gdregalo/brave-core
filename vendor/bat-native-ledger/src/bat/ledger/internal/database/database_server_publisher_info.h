@@ -22,14 +22,8 @@ class DatabaseServerPublisherInfo: public DatabaseTable {
 
   bool Migrate(ledger::DBTransaction* transaction, const int target) override;
 
-  void DeleteAll(ledger::ResultCallback callback);
-
-  void InsertOrUpdatePartialList(
-      const std::vector<ledger::ServerPublisherPartial>& list,
-      ledger::ResultCallback callback);
-
-  void InsertOrUpdateBannerList(
-      const std::vector<ledger::PublisherBanner>& list,
+  void InsertOrUpdate(
+      const ledger::ServerPublisherInfo& server_info,
       ledger::ResultCallback callback);
 
   void GetRecord(
@@ -37,10 +31,6 @@ class DatabaseServerPublisherInfo: public DatabaseTable {
       ledger::GetServerPublisherInfoCallback callback);
 
  private:
-  void InsertOrUpdate(
-      ledger::DBTransaction* transaction,
-      ledger::ServerPublisherInfoPtr info);
-
   bool CreateTableV7(ledger::DBTransaction* transaction);
 
   bool CreateIndexV7(ledger::DBTransaction* transaction);

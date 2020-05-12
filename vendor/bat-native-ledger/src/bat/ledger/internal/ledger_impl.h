@@ -474,19 +474,17 @@ class LedgerImpl : public ledger::Ledger {
       const std::string& publisher_key,
       ledger::ResultCallback callback);
 
-  void ResetPublisherListPrefixes(
+  void SearchPublisherList(
+      const std::string& prefix,
+      ledger::SearchPublisherListCallback callback);
+
+  void ResetPublisherList(
       braveledger_publisher::PrefixIterator begin,
       braveledger_publisher::PrefixIterator end,
       ledger::ResultCallback callback);
 
-  void ClearServerPublisherList(ledger::ResultCallback callback);
-
-  void InsertServerPublisherList(
-      const std::vector<ledger::ServerPublisherPartial>& list,
-      ledger::ResultCallback callback);
-
-  void InsertPublisherBannerList(
-      const std::vector<ledger::PublisherBanner>& list,
+  void InsertServerPublisherInfo(
+      const ledger::ServerPublisherInfo& server_info,
       ledger::ResultCallback callback);
 
   void GetServerPublisherInfo(

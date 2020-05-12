@@ -185,55 +185,35 @@ bool DatabaseServerPublisherAmounts::MigrateToV21(
   return true;
 }
 
-void DatabaseServerPublisherAmounts::InsertOrUpdateList(
+void DatabaseServerPublisherAmounts::InsertOrUpdate(
     ledger::DBTransaction* transaction,
-    const std::vector<ledger::PublisherBanner>& list) {
+    const ledger::ServerPublisherInfo& server_info) {
   DCHECK(transaction);
-
-  if (list.empty()) {
+  DCHECK(!server_info.publisher_key.empty());
+  if (!server_info.banner || server_info.banner->amounts.empty()) {
     return;
   }
 
-  const std::string base_query = base::StringPrintf(
-      "INSERT OR REPLACE INTO %s VALUES ",
-      kTableName);
-
-  size_t i = 0;
-  std::string query;
-  for (const auto& info : list) {
-    // It's ok if amounts are empty
-    if (info.amounts.empty()) {
-      continue;
-    }
-
-    if (i == 0) {
-      query += base_query;
-    }
-
-    for (const auto& amount : info.amounts) {
-      if (i == kBatchLimit) {
-        query += base_query;
-        i = 0;
-      }
-
-      query += base::StringPrintf(
-        R"(("%s",%g))",
-        info.publisher_key.c_str(),
+  std::string value_list;
+  for (auto& amount : server_info.banner->amounts) {
+    value_list += base::StringPrintf(
+        R"(("%s",%g),)",
+        server_info.publisher_key.c_str(),
         amount);
-      query += (i == kBatchLimit - 1) ? ";" : ",";
-      i++;
-    }
   }
 
-  if (query.empty()) {
-    return;
-  }
+  DCHECK(!value_list.empty());
 
-  query.pop_back();
+  // Remove trailing comma
+  value_list.pop_back();
 
   auto command = ledger::DBCommand::New();
-  command->type = ledger::DBCommand::Type::EXECUTE;
-  command->command = query;
+  command->type = ledger::DBCommand::Type::RUN;
+  command->command = base::StringPrintf(
+      "INSERT OR REPLACE INTO %s VALUES %s",
+      kTableName,
+      value_list.c_str());
+
   transaction->commands.push_back(std::move(command));
 }
 

@@ -12,14 +12,13 @@
 
 #include "base/guid.h"
 #include "base/strings/stringprintf.h"
-#include "base/time/time.h"
 #include "bat/ledger/global_constants.h"
 #include "bat/ledger/internal/ledger_impl.h"
 #include "bat/ledger/internal/properties/publisher_settings_properties.h"
 #include "bat/ledger/internal/properties/report_balance_properties.h"
 #include "bat/ledger/internal/publisher/publisher.h"
 #include "bat/ledger/internal/publisher/publisher_list_fetcher.h"
-#include "bat/ledger/internal/publisher/publisher_server_list.h"
+#include "bat/ledger/internal/publisher/server_publisher_fetcher.h"
 #include "bat/ledger/internal/state/publisher_settings_state.h"
 #include "bat/ledger/internal/static_values.h"
 
@@ -39,19 +38,15 @@
 using std::placeholders::_1;
 using std::placeholders::_2;
 
-namespace {
-
-// TODO(zenparsing): This should probably be an option in option_keys.h
-constexpr int64_t kServerInfoExpiresSeconds = 60 * 60 * 5;
-
-}  // namespace
-
 namespace braveledger_publisher {
 
-Publisher::Publisher(bat_ledger::LedgerImpl* ledger):
-  ledger_(ledger),
-  state_(new ledger::PublisherSettingsProperties),
-  publisher_list_fetcher_(std::make_unique<PublisherListFetcher>(ledger)) {
+Publisher::Publisher(bat_ledger::LedgerImpl* ledger)
+  : ledger_(ledger),
+    state_(new ledger::PublisherSettingsProperties),
+    publisher_list_fetcher_(
+        std::make_unique<PublisherListFetcher>(ledger)),
+    server_publisher_fetcher_(
+        std::make_unique<ServerPublisherFetcher>(ledger)) {
   calcScoreConsts(state_->min_page_time_before_logging_a_visit);
 }
 
@@ -60,45 +55,19 @@ Publisher::~Publisher() {
 
 bool Publisher::ShouldFetchServerPublisherInfo(
     ledger::ServerPublisherInfo* server_info) {
-  if (!server_info) {
-    return true;
-  }
-
-  base::TimeDelta age =
-      base::Time::Now() -
-      base::Time::FromDoubleT(server_info->updated_at);
-
-  if (age.InSeconds() < 0) {
-    // TODO(zenparsing): A negative number here indicates that we
-    // have a problem with how we are storing the time, but could
-    // also indicate that the data is corrupted somehow. How should
-    // we handle this? If the data is just corrupted, then we should
-    // refresh. If we have a problem storing the data then we're
-    // screwed and our refresh mechanism will never work. Is the
-    // following good enough? It could lead to a situation in release
-    // where we never refresh any records. Perhaps we should also
-    // log the error somehow?
-    NOTREACHED();
-  }
-
-  return age.InSeconds() > kServerInfoExpiresSeconds;
+  return server_publisher_fetcher_->IsExpired(server_info);
 }
 
 void Publisher::FetchServerPublisherInfo(
     const std::string& publisher_key,
     ledger::GetServerPublisherInfoCallback callback) {
-  // TODO(zenparsing): Here is where the magic is. Fetch
-  // the data from a URL (we'll want a separate class for
-  // this), load it into the database through ledger, and
-  // then call the callback with the info. Don't go back
-  // through ledger to get the database record (leave a
-  // note to his effect).
+  return server_publisher_fetcher_->Fetch(publisher_key, callback);
 }
 
 void Publisher::RefreshPublisher(
     const std::string& publisher_key,
     ledger::OnRefreshPublisherCallback callback) {
-  FetchServerPublisherInfo(
+  server_publisher_fetcher_->Fetch(
     publisher_key,
     [callback](auto server_info) {
       callback(server_info
@@ -165,7 +134,7 @@ void Publisher::SaveVisit(
     return;
   }
 
-  auto server_callback =
+  ledger::GetServerPublisherInfoCallback server_callback =
       std::bind(&Publisher::OnSaveVisitServerPublisher,
                 this,
                 _1,
@@ -175,11 +144,27 @@ void Publisher::SaveVisit(
                 window_id,
                 callback);
 
-  // TODO(zenparsing): High-efficiency use case. I think that this
-  // is the only one. Call ledger method to search for the hash
-  // prefix. If not found, callback with empty publisher info. If
-  // found, call GetServerPublisherInfo.
-  ledger_->GetServerPublisherInfo(publisher_key, server_callback);
+  // TODO(zenparsing): Kinda strage to create two callbacks here.
+  // But also awkward to have a new method where we need to forward
+  // all of this data through.
+  auto search_callback = std::bind(&Publisher::OnSaveVisitSearchPublisherList,
+      this, _1, publisher_key, server_callback);
+
+  ledger_->SearchPublisherList(publisher_key, search_callback);
+}
+
+void Publisher::OnSaveVisitSearchPublisherList(
+    bool publisher_exists,
+    const std::string& publisher_key,
+    ledger::GetServerPublisherInfoCallback callback) {
+  if (publisher_exists) {
+    // TODO(zenparsing): Do we even need this? The callback
+    // (OnSaveVisitServerPublisher) only uses "status" and
+    // "excluded".
+    ledger_->GetServerPublisherInfo(publisher_key, callback);
+  } else {
+    callback(nullptr);
+  }
 }
 
 ledger::ActivityInfoFilterPtr Publisher::CreateActivityFilter(

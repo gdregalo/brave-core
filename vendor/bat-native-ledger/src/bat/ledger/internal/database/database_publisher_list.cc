@@ -103,14 +103,14 @@ bool DatabasePublisherList::Migrate(
     int target) {
   switch (target) {
     case 21:
-      MigrateV21(transaction);
+      MigrateToV21(transaction);
       return true;
     default:
       return true;
   }
 }
 
-void DatabasePublisherList::MigrateV21(
+void DatabasePublisherList::MigrateToV21(
     ledger::DBTransaction* transaction) {
   DropAndCreateTableV21(transaction);
   ledger_->ClearState(ledger::kStateServerPublisherListStamp);
@@ -118,7 +118,7 @@ void DatabasePublisherList::MigrateV21(
 
 void DatabasePublisherList::Search(
     const std::string& prefix,
-    SearchCallback callback) {
+    ledger::SearchPublisherListCallback callback) {
   auto command = ledger::DBCommand::New();
   command->type = ledger::DBCommand::Type::READ;
   command->command = base::StringPrintf(
@@ -140,7 +140,7 @@ void DatabasePublisherList::Search(
 
 void DatabasePublisherList::OnSearchResult(
     ledger::DBCommandResponsePtr response,
-    SearchCallback callback) {
+    ledger::SearchPublisherListCallback callback) {
   if (response && response->result) {
     for (auto& record : response->result->get_records()) {
       int count = GetIntColumn(record.get(), 0);

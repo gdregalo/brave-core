@@ -25,8 +25,8 @@ struct PublisherSettings;
 
 namespace braveledger_publisher {
 
-class PublisherServerList;
 class PublisherListFetcher;
+class ServerPublisherFetcher;
 
 class Publisher {
  public:
@@ -157,6 +157,11 @@ class Publisher {
       ledger::Result result,
       ledger::PublisherInfoPtr publisher_info);
 
+  void OnSaveVisitSearchPublisherList(
+    bool publisher_exists,
+    const std::string& publisher_key,
+    ledger::GetServerPublisherInfoCallback callback);
+
   void OnSaveVisitServerPublisher(
     ledger::ServerPublisherInfoPtr server_info,
     const std::string& publisher_key,
@@ -230,6 +235,7 @@ class Publisher {
   bat_ledger::LedgerImpl* ledger_;  // NOT OWNED
   std::unique_ptr<ledger::PublisherSettingsProperties> state_;
   std::unique_ptr<PublisherListFetcher> publisher_list_fetcher_;
+  std::unique_ptr<ServerPublisherFetcher> server_publisher_fetcher_;
 
   double a_;
 

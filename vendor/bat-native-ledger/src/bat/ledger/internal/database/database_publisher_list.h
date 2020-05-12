@@ -36,16 +36,16 @@ class DatabasePublisherList: public DatabaseTable {
       braveledger_publisher::PrefixIterator end,
       ledger::ResultCallback callback);
 
-  using SearchCallback = std::function<void(bool)>;
-
-  void Search(const std::string& prefix, SearchCallback callback);
+  void Search(
+      const std::string& prefix,
+      ledger::SearchPublisherListCallback callback);
 
  private:
-  void MigrateV21(ledger::DBTransaction* transaction);
+  void MigrateToV21(ledger::DBTransaction* transaction);
 
   void OnSearchResult(
       ledger::DBCommandResponsePtr response,
-      SearchCallback callback);
+      ledger::SearchPublisherListCallback callback);
 };
 
 }  // namespace braveledger_database

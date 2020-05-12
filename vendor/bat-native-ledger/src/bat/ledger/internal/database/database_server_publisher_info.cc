@@ -142,6 +142,8 @@ bool DatabaseServerPublisherInfo::MigrateToV21(
     ledger::DBTransaction* transaction) {
   DCHECK(transaction);
 
+  // TODO(zenparsing): Do we need to vacuum after this? Vacuum
+  // took 276ms and reduced the size from 137MB to 16MB.
   if (!DropTable(transaction, kTableName)) {
     return false;
   }
@@ -157,82 +159,39 @@ bool DatabaseServerPublisherInfo::MigrateToV21(
   return banner_->Migrate(transaction, 21);
 }
 
-void DatabaseServerPublisherInfo::DeleteAll(ledger::ResultCallback callback) {
+void DatabaseServerPublisherInfo::InsertOrUpdate(
+    const ledger::ServerPublisherInfo& server_info,
+    ledger::ResultCallback callback) {
+  DCHECK(!server_info.publisher_key.empty());
+
   auto transaction = ledger::DBTransaction::New();
-  const std::string query = base::StringPrintf("DELETE FROM %s", kTableName);
 
   auto command = ledger::DBCommand::New();
-  command->type = ledger::DBCommand::Type::EXECUTE;
-  command->command = query;
-  transaction->commands.push_back(std::move(command));
-
-  auto transaction_callback = std::bind(&OnResultCallback,
-      _1,
-      callback);
-
-  ledger_->RunDBTransaction(std::move(transaction), transaction_callback);
-}
-
-void DatabaseServerPublisherInfo::InsertOrUpdatePartialList(
-    const std::vector<ledger::ServerPublisherPartial>& list,
-    ledger::ResultCallback callback) {
-  if (list.empty()) {
-    callback(ledger::Result::LEDGER_OK);
-    return;
-  }
-
-  uint64_t now_seconds = static_cast<uint64_t>(base::Time::Now().ToDoubleT());
-
-  const std::string base_query = base::StringPrintf(
+  command->type = ledger::DBCommand::Type::RUN;
+  command->command = base::StringPrintf(
       "INSERT OR REPLACE INTO %s "
       "(publisher_key, status, excluded, address, updated_at) "
-      "VALUES ",
+      "VALUES (?, ?, ?, ?, ?)",
       kTableName);
 
-  size_t i = 0;
-  std::string main_query = base_query;
-  for (const auto& info : list) {
-    if (i == kBatchLimit) {
-      main_query += base_query;
-      i = 0;
-    }
+  LOG(INFO) << "[[zenparsing]] Inserting into table "
+      << server_info.publisher_key << ", "
+      << static_cast<int>(server_info.status) << ","
+      << server_info.excluded << ","
+      << server_info.address << ","
+      << server_info.updated_at;
 
-    main_query += base::StringPrintf(
-        R"(("%s",%d,%d,"%s",%llu))",
-        info.publisher_key.c_str(),
-        static_cast<int>(info.status),
-        info.excluded,
-        info.address.c_str(),
-        now_seconds);
-    main_query += (i == kBatchLimit - 1) ? ";" : ",";
-    i++;
-  }
-
-  if (main_query.empty()) {
-    callback(ledger::Result::LEDGER_ERROR);
-    return;
-  }
-
-  main_query.pop_back();
-
-  auto transaction = ledger::DBTransaction::New();
-  auto command = ledger::DBCommand::New();
-  command->type = ledger::DBCommand::Type::EXECUTE;
-  command->command = main_query;
+  BindString(command.get(), 0, server_info.publisher_key);
+  BindInt(command.get(), 1, static_cast<int>(server_info.status));
+  BindBool(command.get(), 2, server_info.excluded);
+  BindString(command.get(), 3, server_info.address);
+  BindInt64(command.get(), 4, server_info.updated_at);
 
   transaction->commands.push_back(std::move(command));
+  banner_->InsertOrUpdate(transaction.get(), server_info);
 
-  auto transaction_callback = std::bind(&OnResultCallback,
-      _1,
-      callback);
-
-  ledger_->RunDBTransaction(std::move(transaction), transaction_callback);
-}
-
-void DatabaseServerPublisherInfo::InsertOrUpdateBannerList(
-    const std::vector<ledger::PublisherBanner>& list,
-    ledger::ResultCallback callback) {
-  banner_->InsertOrUpdateList(list, callback);
+  ledger_->RunDBTransaction(std::move(transaction),
+      std::bind(&OnResultCallback, _1, callback));
 }
 
 void DatabaseServerPublisherInfo::GetRecord(
@@ -269,7 +228,7 @@ void DatabaseServerPublisherInfo::OnGetRecordBanner(
       ledger::DBCommand::RecordBindingType::INT_TYPE,
       ledger::DBCommand::RecordBindingType::BOOL_TYPE,
       ledger::DBCommand::RecordBindingType::STRING_TYPE,
-      ledger::DBCommand::RecordBindingType::INT_TYPE
+      ledger::DBCommand::RecordBindingType::INT64_TYPE
   };
 
   transaction->commands.push_back(std::move(command));
@@ -313,7 +272,7 @@ void DatabaseServerPublisherInfo::OnGetRecord(
       GetIntColumn(record, 0));
   info->excluded = GetBoolColumn(record, 1);
   info->address = GetStringColumn(record, 2);
-  info->updated_at = GetIntColumn(record, 3);
+  info->updated_at = GetInt64Column(record, 3);
   info->banner = banner.Clone();
 
   callback(std::move(info));

@@ -405,27 +405,23 @@ void Database::RemoveRecurringTip(
 /**
  * SERVER PUBLISHER INFO
  */
-void Database::ResetPublisherListPrefixes(
+void Database::SearchPublisherList(
+    const std::string& prefix,
+    ledger::SearchPublisherListCallback callback) {
+  publisher_list_->Search(prefix, callback);
+}
+
+void Database::ResetPublisherList(
     braveledger_publisher::PrefixIterator begin,
     braveledger_publisher::PrefixIterator end,
     ledger::ResultCallback callback) {
   publisher_list_->ResetPrefixes(begin, end, callback);
 }
 
-void Database::ClearServerPublisherList(ledger::ResultCallback callback) {
-  server_publisher_info_->DeleteAll(callback);
-}
-
-void Database::InsertServerPublisherList(
-    const std::vector<ledger::ServerPublisherPartial>& list,
+void Database::InsertServerPublisherInfo(
+    const ledger::ServerPublisherInfo& server_info,
     ledger::ResultCallback callback) {
-  server_publisher_info_->InsertOrUpdatePartialList(list, callback);
-}
-
-void Database::InsertPublisherBannerList(
-    const std::vector<ledger::PublisherBanner>& list,
-    ledger::ResultCallback callback) {
-  server_publisher_info_->InsertOrUpdateBannerList(list, callback);
+  server_publisher_info_->InsertOrUpdate(server_info, callback);
 }
 
 void Database::GetServerPublisherInfo(

@@ -7,12 +7,7 @@
 
 #include <utility>
 
-namespace {
-
-constexpr size_t kMinPrefixSize = 4;
-constexpr size_t kMaxPrefixSize = 32;
-
-}  // namespace
+#include "bat/ledger/internal/publisher/prefix_util.h"
 
 namespace braveledger_publisher {
 

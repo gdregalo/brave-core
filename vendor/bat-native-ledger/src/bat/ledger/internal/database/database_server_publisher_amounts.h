@@ -20,9 +20,9 @@ class DatabaseServerPublisherAmounts: public DatabaseTable {
 
   bool Migrate(ledger::DBTransaction* transaction, const int target) override;
 
-  void InsertOrUpdateList(
+  void InsertOrUpdate(
       ledger::DBTransaction* transaction,
-      const std::vector<ledger::PublisherBanner>& list);
+      const ledger::ServerPublisherInfo& server_info);
 
   void GetRecord(
       const std::string& publisher_key,

@@ -10,6 +10,8 @@
 
 // npm run test -- brave_unit_tests --filter='PublisherListReaderTest.*'
 
+// TODO(zenparsing): Rename this test file to publisher_list_reader_unittest.cc
+
 namespace braveledger_publisher {
 
 class PublisherListReaderTest : public testing::Test {};

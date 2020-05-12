@@ -89,7 +89,7 @@ void PublisherListFetcher::OnFetchCompleted(
   auto parse_error = reader.Parse(response);
   if (parse_error == PublisherListReader::ParseError::None) {
     LOG(INFO) << "[[zenparsing]] Updating database!";
-    ledger_->ResetPublisherListPrefixes(
+    ledger_->ResetPublisherList(
       reader.begin(),
       reader.end(),
       std::bind(&PublisherListFetcher::OnDatabaseUpdated,

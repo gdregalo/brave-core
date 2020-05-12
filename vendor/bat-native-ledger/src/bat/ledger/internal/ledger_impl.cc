@@ -1382,27 +1382,23 @@ void LedgerImpl::DeleteActivityInfo(
   bat_database_->DeleteActivityInfo(publisher_key, callback);
 }
 
-void LedgerImpl::ResetPublisherListPrefixes(
+void LedgerImpl::SearchPublisherList(
+    const std::string& prefix,
+    ledger::SearchPublisherListCallback callback) {
+  bat_database_->SearchPublisherList(prefix, callback);
+}
+
+void LedgerImpl::ResetPublisherList(
     braveledger_publisher::PrefixIterator begin,
     braveledger_publisher::PrefixIterator end,
     ledger::ResultCallback callback) {
-  bat_database_->ResetPublisherListPrefixes(begin, end, callback);
+  bat_database_->ResetPublisherList(begin, end, callback);
 }
 
-void LedgerImpl::ClearServerPublisherList(ledger::ResultCallback callback) {
-  bat_database_->ClearServerPublisherList(callback);
-}
-
-void LedgerImpl::InsertServerPublisherList(
-    const std::vector<ledger::ServerPublisherPartial>& list,
+void LedgerImpl::InsertServerPublisherInfo(
+    const ledger::ServerPublisherInfo& server_info,
     ledger::ResultCallback callback) {
-  bat_database_->InsertServerPublisherList(list, callback);
-}
-
-void LedgerImpl::InsertPublisherBannerList(
-    const std::vector<ledger::PublisherBanner>& list,
-    ledger::ResultCallback callback) {
-  bat_database_->InsertPublisherBannerList(list, callback);
+  bat_database_->InsertServerPublisherInfo(server_info, callback);
 }
 
 void LedgerImpl::GetServerPublisherInfo(
