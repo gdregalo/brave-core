@@ -57,7 +57,7 @@ bool DatabaseServerPublisherInfo::CreateIndexV7(
   return this->InsertIndex(transaction, kTableName, "publisher_key");
 }
 
-bool DatabaseServerPublisherInfo::CreateTableV21(
+bool DatabaseServerPublisherInfo::CreateTableV22(
     ledger::DBTransaction* transaction) {
   DCHECK(transaction);
 
@@ -80,7 +80,7 @@ bool DatabaseServerPublisherInfo::CreateTableV21(
   return true;
 }
 
-bool DatabaseServerPublisherInfo::CreateIndexV21(
+bool DatabaseServerPublisherInfo::CreateIndexV22(
     ledger::DBTransaction* transaction) {
   DCHECK(transaction);
 
@@ -99,8 +99,8 @@ bool DatabaseServerPublisherInfo::Migrate(
     case 15: {
       return MigrateToV15(transaction);
     }
-    case 21: {
-      return MigrateToV21(transaction);
+    case 22: {
+      return MigrateToV22(transaction);
     }
     default: {
       return true;
@@ -138,7 +138,7 @@ bool DatabaseServerPublisherInfo::MigrateToV15(
   return banner_->Migrate(transaction, 15);
 }
 
-bool DatabaseServerPublisherInfo::MigrateToV21(
+bool DatabaseServerPublisherInfo::MigrateToV22(
     ledger::DBTransaction* transaction) {
   DCHECK(transaction);
 
@@ -148,15 +148,15 @@ bool DatabaseServerPublisherInfo::MigrateToV21(
     return false;
   }
 
-  if (!CreateTableV21(transaction)) {
+  if (!CreateTableV22(transaction)) {
     return false;
   }
 
-  if (!CreateIndexV21(transaction)) {
+  if (!CreateIndexV22(transaction)) {
     return false;
   }
 
-  return banner_->Migrate(transaction, 21);
+  return banner_->Migrate(transaction, 22);
 }
 
 void DatabaseServerPublisherInfo::InsertOrUpdate(

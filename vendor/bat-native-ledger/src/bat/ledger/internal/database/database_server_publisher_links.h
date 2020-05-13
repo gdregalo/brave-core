@@ -42,7 +42,7 @@ class DatabaseServerPublisherLinks: public DatabaseTable {
 
   bool MigrateToV15(ledger::DBTransaction* transaction);
 
-  bool MigrateToV21(ledger::DBTransaction* transaction);
+  bool MigrateToV22(ledger::DBTransaction* transaction);
 
   void OnGetRecord(
       ledger::DBCommandResponsePtr response,

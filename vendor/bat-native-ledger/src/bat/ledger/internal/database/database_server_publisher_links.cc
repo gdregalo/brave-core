@@ -104,8 +104,8 @@ bool DatabaseServerPublisherLinks::Migrate(
     case 15: {
       return MigrateToV15(transaction);
     }
-    case 21: {
-      return MigrateToV21(transaction);
+    case 22: {
+      return MigrateToV22(transaction);
     }
     default: {
       return true;
@@ -178,7 +178,7 @@ bool DatabaseServerPublisherLinks::MigrateToV15(
   return true;
 }
 
-bool DatabaseServerPublisherLinks::MigrateToV21(
+bool DatabaseServerPublisherLinks::MigrateToV22(
     ledger::DBTransaction* transaction) {
   DCHECK(transaction);
   auto command = ledger::DBCommand::New();

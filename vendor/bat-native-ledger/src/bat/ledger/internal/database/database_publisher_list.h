@@ -41,7 +41,7 @@ class DatabasePublisherList: public DatabaseTable {
       ledger::SearchPublisherListCallback callback);
 
  private:
-  void MigrateToV21(ledger::DBTransaction* transaction);
+  void MigrateToV22(ledger::DBTransaction* transaction);
 
   void OnSearchResult(
       ledger::DBCommandResponsePtr response,

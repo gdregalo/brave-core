@@ -20,7 +20,7 @@ namespace {
 
 const char kTableName[] = "publisher_list";
 
-void DropAndCreateTableV21(ledger::DBTransaction* transaction) {
+void DropAndCreateTableV22(ledger::DBTransaction* transaction) {
   DCHECK(transaction);
 
   if (!braveledger_database::DropTable(transaction, kTableName)) {
@@ -35,6 +35,10 @@ void DropAndCreateTableV21(ledger::DBTransaction* transaction) {
       kTableName);
 
   transaction->commands.push_back(std::move(command));
+}
+
+void DropAndCreateTable(ledger::DBTransaction* transaction) {
+  DropAndCreateTableV22(transaction);
 }
 
 void AddInsertCommand(
@@ -102,17 +106,17 @@ bool DatabasePublisherList::Migrate(
     ledger::DBTransaction* transaction,
     int target) {
   switch (target) {
-    case 21:
-      MigrateToV21(transaction);
+    case 22:
+      MigrateToV22(transaction);
       return true;
     default:
       return true;
   }
 }
 
-void DatabasePublisherList::MigrateToV21(
+void DatabasePublisherList::MigrateToV22(
     ledger::DBTransaction* transaction) {
-  DropAndCreateTableV21(transaction);
+  DropAndCreateTableV22(transaction);
   ledger_->ClearState(ledger::kStateServerPublisherListStamp);
 }
 
@@ -179,7 +183,7 @@ void DatabasePublisherList::ResetPrefixes(
     PrefixIterator end,
     ledger::ResultCallback callback) {
   auto transaction = ledger::DBTransaction::New();
-  DropAndCreateTableV21(transaction.get());
+  DropAndCreateTable(transaction.get());
   AddInsertCommand(GetPrefixInsertList(begin, end), transaction.get());
   ledger_->RunDBTransaction(
       std::move(transaction),
