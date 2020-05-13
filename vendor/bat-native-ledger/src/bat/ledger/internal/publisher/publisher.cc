@@ -16,6 +16,7 @@
 #include "bat/ledger/internal/ledger_impl.h"
 #include "bat/ledger/internal/properties/publisher_settings_properties.h"
 #include "bat/ledger/internal/properties/report_balance_properties.h"
+#include "bat/ledger/internal/publisher/prefix_util.h"
 #include "bat/ledger/internal/publisher/publisher.h"
 #include "bat/ledger/internal/publisher/publisher_list_fetcher.h"
 #include "bat/ledger/internal/publisher/server_publisher_fetcher.h"
@@ -134,37 +135,35 @@ void Publisher::SaveVisit(
     return;
   }
 
-  ledger::GetServerPublisherInfoCallback server_callback =
-      std::bind(&Publisher::OnSaveVisitServerPublisher,
-                this,
-                _1,
-                publisher_key,
-                visit_data,
-                duration,
-                window_id,
-                callback);
+  // TODO(zenparsing): Prefix size is problematic here, because
+  // although we allow arbitrary sizes when inputing, we have
+  // to assume a certain size when querying. The prefix size is
+  // a property of the hash lookup table itself, but we're not
+  // storing that anywhere.
+  std::string prefix =
+      braveledger_publisher::GetHashPrefixRaw(publisher_key, 4);
 
-  // TODO(zenparsing): Kinda strage to create two callbacks here.
-  // But also awkward to have a new method where we need to forward
-  // all of this data through.
-  auto search_callback = std::bind(&Publisher::OnSaveVisitSearchPublisherList,
-      this, _1, publisher_key, server_callback);
+  ledger_->SearchPublisherList(prefix, [=](bool publisher_exists) {
+    auto on_server_info = [=](ledger::ServerPublisherInfoPtr server_info) {
+      OnSaveVisitServerPublisher(
+          std::move(server_info),
+          publisher_key,
+          visit_data,
+          duration,
+          window_id,
+          callback);
+    };
 
-  ledger_->SearchPublisherList(publisher_key, search_callback);
-}
-
-void Publisher::OnSaveVisitSearchPublisherList(
-    bool publisher_exists,
-    const std::string& publisher_key,
-    ledger::GetServerPublisherInfoCallback callback) {
-  if (publisher_exists) {
-    // TODO(zenparsing): Do we even need this? The callback
-    // (OnSaveVisitServerPublisher) only uses "status" and
-    // "excluded".
-    ledger_->GetServerPublisherInfo(publisher_key, callback);
-  } else {
-    callback(nullptr);
-  }
+    if (publisher_exists) {
+      // TODO(zenparsing): We could get into a case where the prefix
+      // is in the index but we can't fetch the data. In that case,
+      // we'd keep requesting from the server. We might need a backoff
+      // in that case.
+      ledger_->GetServerPublisherInfo(publisher_key, on_server_info);
+    } else {
+      on_server_info(nullptr);
+    }
+  });
 }
 
 ledger::ActivityInfoFilterPtr Publisher::CreateActivityFilter(
@@ -894,9 +893,6 @@ void Publisher::GetPublisherBanner(
                 publisher_key,
                 callback);
 
-  // TODO(zenparsing): High-integrity use case (I think; this is
-  // only called from the front-end after we know that the publisher
-  // key is valid.
   ledger_->GetServerPublisherInfo(publisher_key, banner_callback);
 }
 

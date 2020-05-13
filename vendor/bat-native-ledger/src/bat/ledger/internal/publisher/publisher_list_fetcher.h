@@ -7,6 +7,8 @@
 #define BRAVELEDGER_PUBLISHER_PUBLISHER_LIST_FETCHER_H_
 
 #include <functional>
+#include <map>
+#include <string>
 
 #include "base/timer/timer.h"
 #include "bat/ledger/ledger.h"
@@ -26,10 +28,6 @@ class PublisherListFetcher {
 
   ~PublisherListFetcher();
 
-  using FetchCallback = std::function<void()>;
-
-  void Fetch(FetchCallback callback);
-
   void StartAutoUpdate();
 
   void StopAutoUpdate();
@@ -44,10 +42,9 @@ class PublisherListFetcher {
   void OnFetchCompleted(
       int response_status_code,
       const std::string& response,
-      const std::map<std::string, std::string>& headers,
-      FetchCallback callback);
+      const std::map<std::string, std::string>& headers);
 
-  void OnDatabaseUpdated(ledger::Result result, FetchCallback callback);
+  void OnDatabaseUpdated(ledger::Result result);
 
   base::TimeDelta GetAutoUpdateDelay();
 

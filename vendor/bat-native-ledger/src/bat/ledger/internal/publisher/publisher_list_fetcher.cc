@@ -34,22 +34,6 @@ PublisherListFetcher::PublisherListFetcher(bat_ledger::LedgerImpl* ledger)
 
 PublisherListFetcher::~PublisherListFetcher() = default;
 
-void PublisherListFetcher::Fetch(FetchCallback callback) {
-  LOG(INFO) << "[[zenparsing]] Fetching list!";
-  ledger_->SetUint64State(
-      ledger::kStateServerPublisherListStamp,
-      static_cast<uint64_t>(base::Time::Now().ToDoubleT()));
-
-  // TODO(zenparsing): Get a real URL
-  std::string url = "http://localhost:3000/publisher_list.pb";
-
-  ledger_->LoadURL(
-      url, {}, "", "",
-      ledger::UrlMethod::GET,
-      std::bind(&PublisherListFetcher::OnFetchCompleted,
-          this, _1, _2, _3, callback));
-}
-
 void PublisherListFetcher::StartAutoUpdate() {
   auto_update_ = true;
   if (!timer_.IsRunning()) {
@@ -71,29 +55,34 @@ void PublisherListFetcher::StartFetchTimer(
 }
 
 void PublisherListFetcher::OnFetchTimerElapsed() {
-  Fetch([]() {});
+  ledger_->SetUint64State(
+      ledger::kStateServerPublisherListStamp,
+      static_cast<uint64_t>(base::Time::Now().ToDoubleT()));
+
+  // TODO(zenparsing): Get a real URL
+  std::string url = "http://localhost:3000/publisher_list.pb";
+
+  ledger_->LoadURL(
+      url, {}, "", "",
+      ledger::UrlMethod::GET,
+      std::bind(&PublisherListFetcher::OnFetchCompleted, this, _1, _2, _3));
 }
 
 void PublisherListFetcher::OnFetchCompleted(
     int response_status_code,
     const std::string& response,
-    const std::map<std::string, std::string>& headers,
-    FetchCallback callback) {
-  LOG(INFO) << "[[zenparsing]] Fetching completed!";
+    const std::map<std::string, std::string>& headers) {
   if (response_status_code != net::HTTP_OK || response.empty()) {
     StartFetchTimer(FROM_HERE, GetRetryAfterFailureDelay());
-    callback();
     return;
   }
   PublisherListReader reader;
   auto parse_error = reader.Parse(response);
   if (parse_error == PublisherListReader::ParseError::None) {
-    LOG(INFO) << "[[zenparsing]] Updating database!";
     ledger_->ResetPublisherList(
       reader.begin(),
       reader.end(),
-      std::bind(&PublisherListFetcher::OnDatabaseUpdated,
-          this, _1, callback));
+      std::bind(&PublisherListFetcher::OnDatabaseUpdated, this, _1));
   }
   // TODO(zenparsing): Should we set this timer after the database
   // is updated, or here? What should the behavior be when the
@@ -103,15 +92,10 @@ void PublisherListFetcher::OnFetchCompleted(
   if (auto_update_) {
     StartFetchTimer(FROM_HERE, GetAutoUpdateDelay());
   }
-  callback();
 }
 
-void PublisherListFetcher::OnDatabaseUpdated(
-    ledger::Result result,
-    FetchCallback callback) {
-  // TODO(zenparsing)
-  LOG(INFO) << "[[zenparsing]] Database updated!";
-  callback();
+void PublisherListFetcher::OnDatabaseUpdated(ledger::Result result) {
+  // TODO(zenparsing): Log errors
 }
 
 base::TimeDelta PublisherListFetcher::GetAutoUpdateDelay() {

@@ -5,10 +5,13 @@
 
 #include "bat/ledger/internal/publisher/server_publisher_fetcher.h"
 
+#include <utility>
+
 #include "base/json/json_reader.h"
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
 #include "bat/ledger/internal/ledger_impl.h"
+#include "bat/ledger/internal/publisher/channel_responses.pb.h"
 #include "bat/ledger/internal/publisher/prefix_util.h"
 #include "net/http/http_status_code.h"
 
@@ -23,6 +26,7 @@ constexpr size_t kQueryHashPrefixSize = 2;
 // TODO(zenparsing): This should probably be an option in option_keys.h
 constexpr int64_t kServerInfoExpiresSeconds = 60 * 60 * 5;
 
+/*
 ledger::PublisherStatus PublisherStatusFromString(const std::string& str) {
   return
       str == "publisher_verified" ? ledger::PublisherStatus::CONNECTED :
@@ -140,6 +144,89 @@ ledger::ServerPublisherInfoPtr ServerPublisherInfoFromResponse(
 
   return nullptr;
 }
+*/
+
+ledger::PublisherStatus PublisherStatusFromMessage(
+    const publishers_pb::ChannelResponse& response) {
+  // TODO(zenparsing): Verify these mappings
+  switch (response.wallet_connected_state()) {
+    case publishers_pb::UPHOLD_ACCOUNT_KYC:
+      return ledger::PublisherStatus::CONNECTED;
+    case publishers_pb::UPHOLD_ACCOUNT_NO_KYC:
+      return ledger::PublisherStatus::VERIFIED;
+    default:
+      return ledger::PublisherStatus::NOT_VERIFIED;
+  }
+}
+
+ledger::PublisherBannerPtr PublisherBannerFromMessage(
+    const publishers_pb::SiteBannerDetails& banner_details) {
+  auto banner = ledger::PublisherBanner::New();
+
+  banner->title = banner_details.title();
+  banner->description = banner_details.description();
+
+  if (!banner_details.background_url().empty()) {
+    banner->background =
+        "chrome://rewards-image/" + banner_details.background_url();
+  }
+
+  if (!banner_details.logo_url().empty()) {
+    banner->logo = "chrome://rewards-image/" + banner_details.logo_url();
+  }
+
+  for (auto& amount : banner_details.donation_amounts()) {
+    banner->amounts.push_back(amount);
+  }
+
+  if (banner_details.has_social_links()) {
+    auto& links = banner_details.social_links();
+    if (!links.youtube().empty()) {
+      banner->links.insert(std::make_pair("youtube", links.youtube()));
+    }
+    if (!links.twitter().empty()) {
+      banner->links.insert(std::make_pair("twitter", links.twitter()));
+    }
+    if (!links.twitch().empty()) {
+      banner->links.insert(std::make_pair("twitch", links.twitch()));
+    }
+  }
+
+  return banner;
+}
+
+ledger::ServerPublisherInfoPtr ServerPublisherInfoFromString(
+    const std::string& response,
+    const std::string& expected_key) {
+  publishers_pb::ChannelResponses channel_responses;
+  if (!channel_responses.ParseFromString(response)) {
+    // TODO(zenparsing): Log error
+    return nullptr;
+  }
+
+  for (auto& entry : channel_responses.channel_response()) {
+    if (entry.channel_identifier() != expected_key) {
+      continue;
+    }
+
+    auto server_info = ledger::ServerPublisherInfo::New();
+    server_info->publisher_key = entry.channel_identifier();
+    server_info->status = PublisherStatusFromMessage(entry);
+    // TODO(zenparsing): Do we need excluded?
+    server_info->address = entry.wallet_address();
+    server_info->updated_at =
+        static_cast<uint64_t>(base::Time::Now().ToDoubleT());
+
+    if (entry.has_site_banner_details()) {
+      server_info->banner =
+          PublisherBannerFromMessage(entry.site_banner_details());
+    }
+
+    return server_info;
+  }
+
+  return nullptr;
+}
 
 }  // namespace
 
@@ -155,8 +242,10 @@ ServerPublisherFetcher::~ServerPublisherFetcher() = default;
 
 void ServerPublisherFetcher::Fetch(
     const std::string& publisher_key,
-    ledger::GetServerPublisherInfoCallback callback)
-{
+    ledger::GetServerPublisherInfoCallback callback) {
+  // TODO(zenparsing): These called need to be deduped somehow.
+  // We could store publisher_keys and a list of callbacks in
+  // a map.
   std::string prefix = GetHashPrefixInHex(
       publisher_key,
       kQueryHashPrefixSize);
@@ -186,10 +275,14 @@ void ServerPublisherFetcher::OnFetchCompleted(
     return;
   }
 
-  auto server_info = ServerPublisherInfoFromResponse(response, publisher_key);
+  auto server_info = ServerPublisherInfoFromString(response, publisher_key);
   if (server_info) {
     ledger_->InsertServerPublisherInfo(*server_info, [](ledger::Result) {});
   }
+
+  // TODO(zenparsing): If not found in the response, should we remove
+  // the publisher from the prefix list so that we don't attempt to query
+  // again?
 
   callback(std::move(server_info));
 }

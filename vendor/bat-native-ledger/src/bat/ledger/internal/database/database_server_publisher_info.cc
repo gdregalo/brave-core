@@ -174,13 +174,6 @@ void DatabaseServerPublisherInfo::InsertOrUpdate(
       "VALUES (?, ?, ?, ?, ?)",
       kTableName);
 
-  LOG(INFO) << "[[zenparsing]] Inserting into table "
-      << server_info.publisher_key << ", "
-      << static_cast<int>(server_info.status) << ","
-      << server_info.excluded << ","
-      << server_info.address << ","
-      << server_info.updated_at;
-
   BindString(command.get(), 0, server_info.publisher_key);
   BindInt(command.get(), 1, static_cast<int>(server_info.status));
   BindBool(command.get(), 2, server_info.excluded);

@@ -40,7 +40,7 @@ class ServerPublisherFetcher {
       const std::map<std::string, std::string>& headers,
       ledger::GetServerPublisherInfoCallback callback);
 
-  bat_ledger::LedgerImpl* ledger_; //  NOT OWNED
+  bat_ledger::LedgerImpl* ledger_;  // NOT OWNED
 };
 
 }  // namespace braveledger_publisher

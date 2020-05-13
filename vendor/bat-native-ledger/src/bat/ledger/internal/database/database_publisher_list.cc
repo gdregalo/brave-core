@@ -76,7 +76,7 @@ std::string GetPrefixInsertList(PrefixIterator begin, PrefixIterator end) {
   for (auto iter = begin; iter != end; ++iter) {
     auto prefix = *iter;
     values.append(iter == begin ? "(x'" : "'),(x'");
-    values.append(base::HexEncode(prefix.data(), prefix.length()));
+    values.append(base::HexEncode(prefix.data(), prefix.size()));
   }
   values.append("')");
   return values;
@@ -87,7 +87,7 @@ std::string GetPrefixSearchList(PrefixIterator begin, PrefixIterator end) {
   for (auto iter = begin; iter != end; ++iter) {
     auto prefix = *iter;
     values.append(iter == begin ? "(x'" : "',x'");
-    values.append(base::HexEncode(prefix.data(), prefix.length()));
+    values.append(base::HexEncode(prefix.data(), prefix.size()));
   }
   values.append("')");
   return values;
@@ -123,13 +123,15 @@ void DatabasePublisherList::MigrateToV22(
 void DatabasePublisherList::Search(
     const std::string& prefix,
     ledger::SearchPublisherListCallback callback) {
+  std::string hex = base::HexEncode(prefix.data(), prefix.size());
+
   auto command = ledger::DBCommand::New();
   command->type = ledger::DBCommand::Type::READ;
   command->command = base::StringPrintf(
-      "SELECT COUNT(*) as count FROM %s WHERE hash_prefix = ?",
-      kTableName);
+      "SELECT COUNT(*) as count FROM %s WHERE hash_prefix = x'%s'",
+      kTableName,
+      hex.c_str());
 
-  BindString(command.get(), 0, prefix);
   command->record_bindings = {
     ledger::DBCommand::RecordBindingType::INT_TYPE
   };
@@ -184,6 +186,9 @@ void DatabasePublisherList::ResetPrefixes(
     ledger::ResultCallback callback) {
   auto transaction = ledger::DBTransaction::New();
   DropAndCreateTable(transaction.get());
+  // TODO(zenparsing): Building the full insert command will expand
+  // the memory requirement by a factor of 4. We should set a batch
+  // limit instead.
   AddInsertCommand(GetPrefixInsertList(begin, end), transaction.get());
   ledger_->RunDBTransaction(
       std::move(transaction),

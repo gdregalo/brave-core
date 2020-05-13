@@ -89,9 +89,10 @@ source_set("headers") {
   ]
 }
 
-proto_library("publisher_list_proto") {
+proto_library("publishers_proto") {
   sources = [
-    "src/bat/ledger/internal/publisher/publisher_list.proto"
+    "src/bat/ledger/internal/publisher/publisher_list.proto",
+    "src/bat/ledger/internal/publisher/channel_responses.proto",
   ]
 }
 
@@ -332,7 +333,7 @@ source_set("ledger") {
   ]
 
   deps = [
-    ":publisher_list_proto",
+    ":publishers_proto",
     "//base",
     "//crypto",
     "//third_party/boringssl",

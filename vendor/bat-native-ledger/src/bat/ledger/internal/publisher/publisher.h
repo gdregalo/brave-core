@@ -157,11 +157,6 @@ class Publisher {
       ledger::Result result,
       ledger::PublisherInfoPtr publisher_info);
 
-  void OnSaveVisitSearchPublisherList(
-    bool publisher_exists,
-    const std::string& publisher_key,
-    ledger::GetServerPublisherInfoCallback callback);
-
   void OnSaveVisitServerPublisher(
     ledger::ServerPublisherInfoPtr server_info,
     const std::string& publisher_key,
