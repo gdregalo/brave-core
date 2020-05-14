@@ -1383,9 +1383,9 @@ void LedgerImpl::DeleteActivityInfo(
 }
 
 void LedgerImpl::SearchPublisherList(
-    const std::string& prefix,
+    const std::string& publisher_key,
     ledger::SearchPublisherListCallback callback) {
-  bat_database_->SearchPublisherList(prefix, callback);
+  bat_database_->SearchPublisherList(publisher_key, callback);
 }
 
 void LedgerImpl::ResetPublisherList(

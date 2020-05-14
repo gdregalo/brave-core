@@ -10,6 +10,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
 #include "bat/ledger/internal/database/database_util.h"
+#include "bat/ledger/internal/publisher/prefix_util.h"
 #include "bat/ledger/internal/ledger_impl.h"
 #include "bat/ledger/internal/state_keys.h"
 
@@ -19,6 +20,7 @@ using braveledger_publisher::PrefixIterator;
 namespace {
 
 const char kTableName[] = "publisher_list";
+constexpr size_t kHashPrefixSize = 4;
 
 void DropAndCreateTableV22(ledger::DBTransaction* transaction) {
   DCHECK(transaction);
@@ -75,8 +77,9 @@ std::string GetPrefixInsertList(PrefixIterator begin, PrefixIterator end) {
   std::string values;
   for (auto iter = begin; iter != end; ++iter) {
     auto prefix = *iter;
+    DCHECK(prefix.size() >= kHashPrefixSize);
     values.append(iter == begin ? "(x'" : "'),(x'");
-    values.append(base::HexEncode(prefix.data(), prefix.size()));
+    values.append(base::HexEncode(prefix.data(), kHashPrefixSize));
   }
   values.append("')");
   return values;
@@ -121,9 +124,11 @@ void DatabasePublisherList::MigrateToV22(
 }
 
 void DatabasePublisherList::Search(
-    const std::string& prefix,
+    const std::string& publisher_key,
     ledger::SearchPublisherListCallback callback) {
-  std::string hex = base::HexEncode(prefix.data(), prefix.size());
+  std::string hex = braveledger_publisher::GetHashPrefixInHex(
+      publisher_key,
+      kHashPrefixSize);
 
   auto command = ledger::DBCommand::New();
   command->type = ledger::DBCommand::Type::READ;

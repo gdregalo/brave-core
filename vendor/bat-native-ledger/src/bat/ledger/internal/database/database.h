@@ -278,7 +278,7 @@ class Database {
    * SERVER PUBLISHER INFO
    */
   void SearchPublisherList(
-      const std::string& prefix,
+      const std::string& publisher_key,
       ledger::SearchPublisherListCallback callback);
 
   void ResetPublisherList(

@@ -135,15 +135,7 @@ void Publisher::SaveVisit(
     return;
   }
 
-  // TODO(zenparsing): Prefix size is problematic here, because
-  // although we allow arbitrary sizes when inputing, we have
-  // to assume a certain size when querying. The prefix size is
-  // a property of the hash lookup table itself, but we're not
-  // storing that anywhere.
-  std::string prefix =
-      braveledger_publisher::GetHashPrefixRaw(publisher_key, 4);
-
-  ledger_->SearchPublisherList(prefix, [=](bool publisher_exists) {
+  ledger_->SearchPublisherList(publisher_key, [=](bool publisher_exists) {
     auto on_server_info = [=](ledger::ServerPublisherInfoPtr server_info) {
       OnSaveVisitServerPublisher(
           std::move(server_info),

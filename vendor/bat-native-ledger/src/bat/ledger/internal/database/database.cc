@@ -406,9 +406,9 @@ void Database::RemoveRecurringTip(
  * SERVER PUBLISHER INFO
  */
 void Database::SearchPublisherList(
-    const std::string& prefix,
+    const std::string& publisher_prefix,
     ledger::SearchPublisherListCallback callback) {
-  publisher_list_->Search(prefix, callback);
+  publisher_list_->Search(publisher_prefix, callback);
 }
 
 void Database::ResetPublisherList(

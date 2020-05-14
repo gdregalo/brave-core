@@ -37,7 +37,7 @@ class DatabasePublisherList: public DatabaseTable {
       ledger::ResultCallback callback);
 
   void Search(
-      const std::string& prefix,
+      const std::string& publisher_key,
       ledger::SearchPublisherListCallback callback);
 
  private:

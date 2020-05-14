@@ -475,7 +475,7 @@ class LedgerImpl : public ledger::Ledger {
       ledger::ResultCallback callback);
 
   void SearchPublisherList(
-      const std::string& prefix,
+      const std::string& publisher_key,
       ledger::SearchPublisherListCallback callback);
 
   void ResetPublisherList(
