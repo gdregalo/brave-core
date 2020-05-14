@@ -4,18 +4,21 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "base/strings/stringprintf.h"
-#include "bat/ledger/internal/static_values.h"
 #include "bat/ledger/internal/request/request_publisher.h"
 #include "bat/ledger/internal/request/request_util.h"
 
 namespace braveledger_request_util {
 
-std::string GetPublisherListUrl(const uint32_t page) {
-  const std::string path = base::StringPrintf(
-      "/api/v3/public/channels?page=%d",
-      page);
+std::string GetPublisherListUrl() {
+  // TODO(zenparsing): Use BuildUrl
+  return "http://localhost:3000/publisher_list.pb";
+}
 
-  return BuildUrl(path, "", ServerTypes::kPublisher);
+std::string GetPublisherInfoUrl(const std::string& hash_prefix) {
+  // TODO(zenparsing): Use BuildUrl
+  return base::StringPrintf(
+      "http://localhost:3000/channel/%s",
+      hash_prefix.c_str());
 }
 
 }  // namespace braveledger_request_util

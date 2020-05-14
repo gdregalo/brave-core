@@ -20,6 +20,7 @@ using braveledger_publisher::PrefixIterator;
 namespace {
 
 const char kTableName[] = "publisher_list";
+
 constexpr size_t kHashPrefixSize = 4;
 
 void DropAndCreateTableV22(ledger::DBTransaction* transaction) {
@@ -159,7 +160,7 @@ void DatabasePublisherList::OnSearchResult(
       return;
     }
   }
-  // TODO(zenparsing): Log error?
+  // TODO(zenparsing): Log error - Unexpected database result.
   callback(false);
 }
 
@@ -192,8 +193,11 @@ void DatabasePublisherList::ResetPrefixes(
   auto transaction = ledger::DBTransaction::New();
   DropAndCreateTable(transaction.get());
   // TODO(zenparsing): Building the full insert command will expand
-  // the memory requirement by a factor of 4. We should set a batch
-  // limit instead.
+  // the memory requirement by a factor of 4. We should perhaps set
+  // a batch limit instead. The problem with that approach is that
+  // we then have to store the remainder of the prefix list between
+  // calls. So we still need to make a copy of at least the whole
+  // byte string.
   AddInsertCommand(GetPrefixInsertList(begin, end), transaction.get());
   ledger_->RunDBTransaction(
       std::move(transaction),

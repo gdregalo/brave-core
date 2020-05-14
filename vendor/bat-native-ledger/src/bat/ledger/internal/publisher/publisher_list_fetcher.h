@@ -47,10 +47,12 @@ class PublisherListFetcher {
   void OnDatabaseUpdated(ledger::Result result);
 
   base::TimeDelta GetAutoUpdateDelay();
+  base::TimeDelta GetRetryAfterFailureDelay();
 
   bat_ledger::LedgerImpl* ledger_;  // NOT OWNED
   base::OneShotTimer timer_;
   bool auto_update_ = false;
+  int retry_count_ = 0;
 };
 
 }  // namespace braveledger_publisher

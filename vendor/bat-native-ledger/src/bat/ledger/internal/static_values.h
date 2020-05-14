@@ -24,6 +24,7 @@
 #define BALANCE_DEVELOPMENT_SERVER            \
 "https://balance.rewards.brave.software"
 
+// TODO(zenparsing): Update these URLs
 #define PUBLISHER_STAGING_SERVER     \
 "https://publishers-staging-distro.basicattentiontoken.org"
 #define PUBLISHER_PRODUCTION_SERVER  \

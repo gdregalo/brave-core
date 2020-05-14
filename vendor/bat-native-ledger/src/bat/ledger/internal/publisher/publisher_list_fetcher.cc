@@ -7,6 +7,7 @@
 
 #include "bat/ledger/internal/ledger_impl.h"
 #include "bat/ledger/internal/publisher/publisher_list_reader.h"
+#include "bat/ledger/internal/request/request_publisher.h"
 #include "bat/ledger/internal/state_keys.h"
 #include "bat/ledger/option_keys.h"
 #include "brave_base/random.h"
@@ -19,11 +20,7 @@ using std::placeholders::_3;
 namespace {
 
 constexpr double kRetryAfterFailureDelay = 150.0;
-
-base::TimeDelta GetRetryAfterFailureDelay() {
-  uint64_t seconds = brave_base::random::Geometric(kRetryAfterFailureDelay);
-  return base::TimeDelta::FromSeconds(seconds);
-}
+constexpr uint64_t kMaxRetryAfterFailureDelay = 60 * 60 * 4;
 
 }  // namespace
 
@@ -59,9 +56,7 @@ void PublisherListFetcher::OnFetchTimerElapsed() {
       ledger::kStateServerPublisherListStamp,
       static_cast<uint64_t>(base::Time::Now().ToDoubleT()));
 
-  // TODO(zenparsing): Get a real URL
-  std::string url = "http://localhost:3000/publisher_list.pb";
-
+  std::string url = braveledger_request_util::GetPublisherListUrl();
   ledger_->LoadURL(
       url, {}, "", "",
       ledger::UrlMethod::GET,
@@ -73,29 +68,36 @@ void PublisherListFetcher::OnFetchCompleted(
     const std::string& response,
     const std::map<std::string, std::string>& headers) {
   if (response_status_code != net::HTTP_OK || response.empty()) {
+    // TODO(zenparsing): Log error - invalid server response
     StartFetchTimer(FROM_HERE, GetRetryAfterFailureDelay());
     return;
   }
+
   PublisherListReader reader;
   auto parse_error = reader.Parse(response);
-  if (parse_error == PublisherListReader::ParseError::None) {
-    ledger_->ResetPublisherList(
+  if (parse_error != PublisherListReader::ParseError::None) {
+    // TODO(zenparsing): Log error - invalid protobuf message
+    // TODO(zenparsing): Should we consider this a server error,
+    // in which case we should requery soon, or a client error,
+    // in which case we should not?
+    StartFetchTimer(FROM_HERE, GetRetryAfterFailureDelay());
+    return;
+  }
+
+  retry_count_ = 0;
+
+  ledger_->ResetPublisherList(
       reader.begin(),
       reader.end(),
       std::bind(&PublisherListFetcher::OnDatabaseUpdated, this, _1));
-  }
-  // TODO(zenparsing): Should we set this timer after the database
-  // is updated, or here? What should the behavior be when the
-  // database update fails for some reason? If we do a failure retry,
-  // then we risk flooding the server. Instead, we should probably
-  // leave the following as is and log the error.
+
   if (auto_update_) {
     StartFetchTimer(FROM_HERE, GetAutoUpdateDelay());
   }
 }
 
 void PublisherListFetcher::OnDatabaseUpdated(ledger::Result result) {
-  // TODO(zenparsing): Log errors
+  // TODO(zenparsing): Log error - Unable to update database
 }
 
 base::TimeDelta PublisherListFetcher::GetAutoUpdateDelay() {
@@ -116,6 +118,16 @@ base::TimeDelta PublisherListFetcher::GetAutoUpdateDelay() {
   return fetch_time < now
       ? base::TimeDelta::FromSeconds(0)
       : fetch_time - now;
+}
+
+base::TimeDelta PublisherListFetcher::GetRetryAfterFailureDelay() {
+  uint64_t seconds = brave_base::random::Geometric(kRetryAfterFailureDelay);
+  seconds <<= retry_count_;
+  retry_count_ += 1;
+  if (seconds > kMaxRetryAfterFailureDelay) {
+    seconds = kMaxRetryAfterFailureDelay;
+  }
+  return base::TimeDelta::FromSeconds(seconds);
 }
 
 }  // namespace braveledger_publisher
