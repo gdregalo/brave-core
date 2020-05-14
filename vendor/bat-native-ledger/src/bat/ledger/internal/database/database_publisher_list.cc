@@ -131,6 +131,9 @@ void DatabasePublisherList::Search(
       publisher_key,
       kHashPrefixSize);
 
+  LOG(INFO) << "[[zenparsing]] Searching for " << publisher_key;
+  LOG(INFO) << "[[zenparsing]] Prefix " << hex;
+
   auto command = ledger::DBCommand::New();
   command->type = ledger::DBCommand::Type::READ;
   command->command = base::StringPrintf(
@@ -156,6 +159,7 @@ void DatabasePublisherList::OnSearchResult(
   if (response && response->result) {
     for (auto& record : response->result->get_records()) {
       int count = GetIntColumn(record.get(), 0);
+      LOG(INFO) << "[[zenparsing]] Result is " << count;
       callback(count > 0);
       return;
     }

@@ -135,6 +135,8 @@ void Publisher::SaveVisit(
     return;
   }
 
+  LOG(INFO) << "[[zenparsing]] SaveVisit, let's search";
+
   ledger_->SearchPublisherList(publisher_key, [=](bool publisher_exists) {
     auto on_server_info = [=](ledger::ServerPublisherInfoPtr server_info) {
       OnSaveVisitServerPublisher(
@@ -884,7 +886,10 @@ void Publisher::GetPublisherBanner(
                 _1,
                 publisher_key,
                 callback);
-
+  LOG(INFO) << "[[zenparsing]] GetPublisherBanner";
+  // TODO(zenparsing): This is also called from the front-end
+  // on every page load. Should it be? If yes, we need to do
+  // a hash search first.
   ledger_->GetServerPublisherInfo(publisher_key, banner_callback);
 }
 

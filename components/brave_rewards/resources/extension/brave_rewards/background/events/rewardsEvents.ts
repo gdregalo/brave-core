@@ -14,6 +14,8 @@ chrome.braveRewards.onPublisherData.addListener((windowId: number, publisher: Re
 
   // Get publisher amounts
   if (publisher && publisher.publisher_key) {
+    // TODO(zenparsing): We're calling this even when the publisher
+    // isn't "valid". Should we skip if publisher.status === 0?
     chrome.braveRewards.getPublisherBanner(publisher.publisher_key, ((banner: RewardsExtension.PublisherBanner) => {
       rewardsPanelActions.onPublisherBanner(banner)
     }))

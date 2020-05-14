@@ -37,10 +37,17 @@ class ServerPublisherFetcher {
       const std::string& publisher_key,
       int response_status_code,
       const std::string& response,
-      const std::map<std::string, std::string>& headers,
-      ledger::GetServerPublisherInfoCallback callback);
+      const std::map<std::string, std::string>& headers);
+
+  void RunCallbacks(
+      const std::string& publisher_key,
+      ledger::ServerPublisherInfoPtr server_info);
+
+  using CallbackMap =
+      std::multimap<std::string, ledger::GetServerPublisherInfoCallback>;
 
   bat_ledger::LedgerImpl* ledger_;  // NOT OWNED
+  CallbackMap callback_map_;
 };
 
 }  // namespace braveledger_publisher

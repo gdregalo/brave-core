@@ -124,9 +124,13 @@ ServerPublisherFetcher::~ServerPublisherFetcher() = default;
 void ServerPublisherFetcher::Fetch(
     const std::string& publisher_key,
     ledger::GetServerPublisherInfoCallback callback) {
-  // TODO(zenparsing): These calls need to be deduped somehow.
-  // We could store publisher_keys and a list of callbacks in
-  // a map.
+  bool has_entry = callback_map_.count(publisher_key) > 0;
+  callback_map_.insert(std::make_pair(publisher_key, callback));
+  if (has_entry) {
+    LOG(INFO) << "[[zenparsing]] deduping request for " << publisher_key;
+    return;
+  }
+
   std::string url = braveledger_request_util::GetPublisherInfoUrl(
       GetHashPrefixInHex(publisher_key, kQueryHashPrefixSize));
 
@@ -135,19 +139,18 @@ void ServerPublisherFetcher::Fetch(
       url, {}, "", "",
       ledger::UrlMethod::GET,
       std::bind(&ServerPublisherFetcher::OnFetchCompleted,
-          this, publisher_key, _1, _2, _3, callback));
+          this, publisher_key, _1, _2, _3));
 }
 
 void ServerPublisherFetcher::OnFetchCompleted(
     const std::string& publisher_key,
     int response_status_code,
     const std::string& response,
-    const std::map<std::string, std::string>& headers,
-    ledger::GetServerPublisherInfoCallback callback) {
+    const std::map<std::string, std::string>& headers) {
   if (response_status_code != net::HTTP_OK || response.empty()) {
     // TODO(zenparsing): Log error? 404 is expected if there aren't
     // any channels with a matching prefix.
-    callback(nullptr);
+    RunCallbacks(publisher_key, nullptr);
     return;
   }
 
@@ -160,7 +163,7 @@ void ServerPublisherFetcher::OnFetchCompleted(
   // the publisher from the prefix list so that we don't attempt to query
   // again?
 
-  callback(std::move(server_info));
+  RunCallbacks(publisher_key, std::move(server_info));
 }
 
 bool ServerPublisherFetcher::IsExpired(
@@ -187,6 +190,22 @@ bool ServerPublisherFetcher::IsExpired(
   }
 
   return age.InSeconds() > kServerInfoExpiresSeconds;
+}
+
+void ServerPublisherFetcher::RunCallbacks(
+    const std::string& publisher_key,
+    ledger::ServerPublisherInfoPtr server_info) {
+  auto iter = callback_map_.find(publisher_key);
+  DCHECK(iter != callback_map_.end());
+  for (;;) {
+    auto callback = std::move(iter->second);
+    iter = callback_map_.erase(iter);
+    if (iter == callback_map_.end() || iter->first != publisher_key) {
+      callback(server_info ? std::move(server_info) : nullptr);
+      break;
+    }
+    callback(server_info ? server_info->Clone() : nullptr);
+  }
 }
 
 }  // namespace braveledger_publisher
