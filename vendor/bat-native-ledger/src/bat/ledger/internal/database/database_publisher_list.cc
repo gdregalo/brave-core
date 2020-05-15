@@ -22,6 +22,7 @@ namespace {
 const char kTableName[] = "publisher_list";
 
 constexpr size_t kHashPrefixSize = 4;
+constexpr size_t kMaxInsertRecords = 100'000;
 
 void DropAndCreateTableV22(ledger::DBTransaction* transaction) {
   DCHECK(transaction);
@@ -44,16 +45,21 @@ void AddDropAndCreateTableCommand(ledger::DBTransaction* transaction) {
   DropAndCreateTableV22(transaction);
 }
 
-std::string GetPrefixInsertList(PrefixIterator begin, PrefixIterator end) {
+std::pair<PrefixIterator, std::string> GetPrefixInsertList(
+    PrefixIterator begin,
+    PrefixIterator end) {
+  DCHECK(begin != end);
+  size_t count = 0;
   std::string values;
-  for (auto iter = begin; iter != end; ++iter) {
+  PrefixIterator iter = begin;
+  for (iter = begin; iter != end && count++ < kMaxInsertRecords; ++iter) {
     auto prefix = *iter;
     DCHECK(prefix.size() >= kHashPrefixSize);
     values.append(iter == begin ? "(x'" : "'),(x'");
     values.append(base::HexEncode(prefix.data(), kHashPrefixSize));
   }
   values.append("')");
-  return values;
+  return {iter, std::move(values)};
 }
 
 }  // namespace
@@ -130,30 +136,64 @@ void DatabasePublisherList::OnSearchResult(
 void DatabasePublisherList::ResetPrefixes(
     std::unique_ptr<braveledger_publisher::PublisherListReader> reader,
     ledger::ResultCallback callback) {
+  if (reader_) {
+    // TODO(zenparsing): Log error - reset in progress
+    callback(ledger::Result::LEDGER_ERROR);
+    return;
+  }
+  reader_ = std::move(reader);
+  InsertNext(reader_->begin(), callback);
+}
+
+void DatabasePublisherList::InsertNext(
+    PrefixIterator begin,
+    ledger::ResultCallback callback) {
+  DCHECK(reader_);
+  DCHECK(begin != reader_->end());
+
   auto transaction = ledger::DBTransaction::New();
 
-  AddDropAndCreateTableCommand(transaction.get());
+  if (begin == reader_->begin()) {
+    LOG(INFO) << "[[zenparsing]] Clearing publisher_list table";
+    AddDropAndCreateTableCommand(transaction.get());
+  }
 
-  // TODO(zenparsing): Building the full insert command will expand
-  // the memory requirement by a factor of 4. We should perhaps set
-  // a batch limit instead. The problem with that approach is that
-  // we then have to store the remainder of the prefix list between
-  // calls. So we still need to make a copy of at least the whole
-  // byte string.
-  std::string value_list = GetPrefixInsertList(reader->begin(), reader->end());
-
+  auto insert_pair = GetPrefixInsertList(begin, reader_->end());
   auto command = ledger::DBCommand::New();
   command->type = ledger::DBCommand::Type::RUN;
   command->command = base::StringPrintf(
       "INSERT OR REPLACE INTO %s (hash_prefix) VALUES %s",
       kTableName,
-      value_list.data());
+      insert_pair.second.data());
 
+  LOG(INFO) << "[[zenparsing]] Inserting: " << insert_pair.second.size();
   transaction->commands.push_back(std::move(command));
 
   ledger_->RunDBTransaction(
       std::move(transaction),
-      std::bind(&OnResultCallback, _1, callback));
+      std::bind(&DatabasePublisherList::OnInsertNextResult,
+          this, _1, insert_pair.first, callback));
+}
+
+void DatabasePublisherList::OnInsertNextResult(
+    ledger::DBCommandResponsePtr response,
+    PrefixIterator begin,
+    ledger::ResultCallback callback) {
+  if (!response ||
+      response->status != ledger::DBCommandResponse::Status::RESPONSE_OK) {
+    reader_ = nullptr;
+    callback(ledger::Result::LEDGER_ERROR);
+    return;
+  }
+
+  if (begin == reader_->end()) {
+    reader_ = nullptr;
+    LOG(INFO) << "[[zenparsing]] Done";
+    callback(ledger::Result::LEDGER_OK);
+    return;
+  }
+
+  InsertNext(begin, callback);
 }
 
 }  // namespace braveledger_database

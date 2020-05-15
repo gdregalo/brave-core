@@ -33,9 +33,20 @@ class DatabasePublisherList: public DatabaseTable {
  private:
   void MigrateToV22(ledger::DBTransaction* transaction);
 
+  void InsertNext(
+      braveledger_publisher::PrefixIterator begin,
+      ledger::ResultCallback callback);
+
+  void OnInsertNextResult(
+      ledger::DBCommandResponsePtr response,
+      braveledger_publisher::PrefixIterator begin,
+      ledger::ResultCallback callback);
+
   void OnSearchResult(
       ledger::DBCommandResponsePtr response,
       ledger::SearchPublisherListCallback callback);
+
+  std::unique_ptr<braveledger_publisher::PublisherListReader> reader_;
 };
 
 }  // namespace braveledger_database
