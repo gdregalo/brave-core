@@ -412,7 +412,7 @@ void Database::SearchPublisherList(
   publisher_list_->Search(publisher_prefix, callback);
 }
 
-void Database::ResetPublisherList(\
+void Database::ResetPublisherList(
     std::unique_ptr<braveledger_publisher::PublisherListReader> reader,
     ledger::ResultCallback callback) {
   publisher_list_->ResetPrefixes(std::move(reader), callback);

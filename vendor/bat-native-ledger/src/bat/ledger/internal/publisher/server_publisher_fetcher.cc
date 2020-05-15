@@ -80,7 +80,7 @@ ledger::ServerPublisherInfoPtr ServerPublisherInfoFromString(
     const std::string& expected_key) {
   publishers_pb::ChannelResponses channel_responses;
   if (!channel_responses.ParseFromString(response)) {
-    // TODO(zenparsing): Log error
+    // TODO(zenparsing): Log error - unable to parse protobuf
     return nullptr;
   }
 
@@ -147,8 +147,9 @@ void ServerPublisherFetcher::OnFetchCompleted(
     const std::string& response,
     const std::map<std::string, std::string>& headers) {
   if (response_status_code != net::HTTP_OK || response.empty()) {
-    // TODO(zenparsing): Log error? 404 is expected if there aren't
-    // any channels with a matching prefix.
+    if (response_status_code != net::HTTP_NOT_FOUND) {
+      // TODO(zenparsing): Log error - unexpected server response
+    }
     RunCallbacks(publisher_key, nullptr);
     return;
   }
@@ -176,16 +177,12 @@ bool ServerPublisherFetcher::IsExpired(
       base::Time::FromDoubleT(server_info->updated_at);
 
   if (age.InSeconds() < 0) {
-    // TODO(zenparsing): A negative number here indicates that we
-    // have a problem with how we are storing the time, but could
-    // also indicate that the data is corrupted somehow. How should
-    // we handle this? If the data is just corrupted, then we should
-    // refresh. If we have a problem storing the data then we're
-    // screwed and our refresh mechanism will never work. Is the
-    // following good enough? It could lead to a situation in release
-    // where we never refresh any records. Perhaps we should also
-    // log the error somehow?
-    NOTREACHED();
+    // TODO(zenparsing): Log error
+    // A negative age value indicates that either the data is
+    // corrupted or that we are incorrectly storing the timestamp.
+    // Pessimistically assume that we are incorrectly storing
+    // the timestamp in order to avoid a case where we fetch
+    // on every tab update.
   }
 
   return age.InSeconds() > kServerInfoExpiresSeconds;
