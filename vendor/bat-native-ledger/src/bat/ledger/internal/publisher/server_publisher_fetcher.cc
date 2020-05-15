@@ -29,12 +29,11 @@ constexpr int64_t kServerInfoExpiresSeconds = 60 * 60 * 5;
 
 ledger::PublisherStatus PublisherStatusFromMessage(
     const publishers_pb::ChannelResponse& response) {
-  // TODO(zenparsing): Verify these mappings
   switch (response.wallet_connected_state()) {
     case publishers_pb::UPHOLD_ACCOUNT_KYC:
-      return ledger::PublisherStatus::CONNECTED;
-    case publishers_pb::UPHOLD_ACCOUNT_NO_KYC:
       return ledger::PublisherStatus::VERIFIED;
+    case publishers_pb::UPHOLD_ACCOUNT_NO_KYC:
+      return ledger::PublisherStatus::CONNECTED;
     default:
       return ledger::PublisherStatus::NOT_VERIFIED;
   }
@@ -192,18 +191,23 @@ bool ServerPublisherFetcher::IsExpired(
   return age.InSeconds() > kServerInfoExpiresSeconds;
 }
 
+ServerPublisherFetcher::CallbackVector ServerPublisherFetcher::GetCallbacks(
+    const std::string& publisher_key) {
+  CallbackVector callbacks;
+  auto range = callback_map_.equal_range(publisher_key);
+  for (auto iter = range.first; iter != range.second; ++iter) {
+    callbacks.push_back(std::move(iter->second));
+  }
+  callback_map_.erase(range.first, range.second);
+  return callbacks;
+}
+
 void ServerPublisherFetcher::RunCallbacks(
     const std::string& publisher_key,
     ledger::ServerPublisherInfoPtr server_info) {
-  auto iter = callback_map_.find(publisher_key);
-  DCHECK(iter != callback_map_.end());
-  for (;;) {
-    auto callback = std::move(iter->second);
-    iter = callback_map_.erase(iter);
-    if (iter == callback_map_.end() || iter->first != publisher_key) {
-      callback(server_info ? std::move(server_info) : nullptr);
-      break;
-    }
+  CallbackVector callbacks = GetCallbacks(publisher_key);
+  DCHECK(callbacks.size() > 0);
+  for (auto& callback : callbacks) {
     callback(server_info ? server_info->Clone() : nullptr);
   }
 }

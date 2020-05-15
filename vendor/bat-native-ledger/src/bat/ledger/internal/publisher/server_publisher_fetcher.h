@@ -33,18 +33,23 @@ class ServerPublisherFetcher {
       ledger::GetServerPublisherInfoCallback callback);
 
  private:
+  using CallbackMap =
+      std::multimap<std::string, ledger::GetServerPublisherInfoCallback>;
+
+  using CallbackVector =
+      std::vector<ledger::GetServerPublisherInfoCallback>;
+
   void OnFetchCompleted(
       const std::string& publisher_key,
       int response_status_code,
       const std::string& response,
       const std::map<std::string, std::string>& headers);
 
+  CallbackVector GetCallbacks(const std::string& publisher_key);
+
   void RunCallbacks(
       const std::string& publisher_key,
       ledger::ServerPublisherInfoPtr server_info);
-
-  using CallbackMap =
-      std::multimap<std::string, ledger::GetServerPublisherInfoCallback>;
 
   bat_ledger::LedgerImpl* ledger_;  // NOT OWNED
   CallbackMap callback_map_;

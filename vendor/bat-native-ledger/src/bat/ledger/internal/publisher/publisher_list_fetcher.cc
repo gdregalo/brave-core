@@ -52,10 +52,6 @@ void PublisherListFetcher::StartFetchTimer(
 }
 
 void PublisherListFetcher::OnFetchTimerElapsed() {
-  ledger_->SetUint64State(
-      ledger::kStateServerPublisherListStamp,
-      static_cast<uint64_t>(base::Time::Now().ToDoubleT()));
-
   std::string url = braveledger_request_util::GetPublisherListUrl();
   ledger_->LoadURL(
       url, {}, "", "",
@@ -76,13 +72,20 @@ void PublisherListFetcher::OnFetchCompleted(
   PublisherListReader reader;
   auto parse_error = reader.Parse(response);
   if (parse_error != PublisherListReader::ParseError::None) {
-    // TODO(zenparsing): Log error - invalid protobuf message
-    // TODO(zenparsing): Should we consider this a server error,
-    // in which case we should requery soon, or a client error,
-    // in which case we should not?
+    // TODO(zenparsing): Log error - invalid protobuf message.
+    // This could be a problem on the client or the server, but
+    // optimistically assume that it's a server issue and retry
+    // with back-off.
     StartFetchTimer(FROM_HERE, GetRetryAfterFailureDelay());
     return;
   }
+
+  // At this point we have received a valid response from the server.
+  // Store last successful fetch time for calculation of next refresh
+  // interval.
+  ledger_->SetUint64State(
+      ledger::kStateServerPublisherListStamp,
+      static_cast<uint64_t>(base::Time::Now().ToDoubleT()));
 
   retry_count_ = 0;
 
