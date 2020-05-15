@@ -40,38 +40,8 @@ void DropAndCreateTableV22(ledger::DBTransaction* transaction) {
   transaction->commands.push_back(std::move(command));
 }
 
-void DropAndCreateTable(ledger::DBTransaction* transaction) {
+void AddDropAndCreateTableCommand(ledger::DBTransaction* transaction) {
   DropAndCreateTableV22(transaction);
-}
-
-void AddInsertCommand(
-    const std::string& value_list,
-    ledger::DBTransaction* transaction) {
-  DCHECK(transaction);
-
-  auto command = ledger::DBCommand::New();
-  command->type = ledger::DBCommand::Type::RUN;
-  command->command = base::StringPrintf(
-      "INSERT OR REPLACE INTO %s (hash_prefix) VALUES %s",
-      kTableName,
-      value_list.data());
-
-  transaction->commands.push_back(std::move(command));
-}
-
-void AddDeleteCommand(
-    const std::string& value_list,
-    ledger::DBTransaction* transaction) {
-  DCHECK(transaction);
-
-  auto command = ledger::DBCommand::New();
-  command->type = ledger::DBCommand::Type::RUN;
-  command->command = base::StringPrintf(
-      "DELETE FROM %s WHERE hash_prefix IN %s",
-      kTableName,
-      value_list.data());
-
-  transaction->commands.push_back(std::move(command));
 }
 
 std::string GetPrefixInsertList(PrefixIterator begin, PrefixIterator end) {
@@ -81,17 +51,6 @@ std::string GetPrefixInsertList(PrefixIterator begin, PrefixIterator end) {
     DCHECK(prefix.size() >= kHashPrefixSize);
     values.append(iter == begin ? "(x'" : "'),(x'");
     values.append(base::HexEncode(prefix.data(), kHashPrefixSize));
-  }
-  values.append("')");
-  return values;
-}
-
-std::string GetPrefixSearchList(PrefixIterator begin, PrefixIterator end) {
-  std::string values;
-  for (auto iter = begin; iter != end; ++iter) {
-    auto prefix = *iter;
-    values.append(iter == begin ? "(x'" : "',x'");
-    values.append(base::HexEncode(prefix.data(), prefix.size()));
   }
   values.append("')");
   return values;
@@ -168,41 +127,30 @@ void DatabasePublisherList::OnSearchResult(
   callback(false);
 }
 
-void DatabasePublisherList::InsertPrefixes(
-    PrefixIterator begin,
-    PrefixIterator end,
-    ledger::ResultCallback callback) {
-  auto transaction = ledger::DBTransaction::New();
-  AddInsertCommand(GetPrefixInsertList(begin, end), transaction.get());
-  ledger_->RunDBTransaction(
-      std::move(transaction),
-      std::bind(&OnResultCallback, _1, callback));
-}
-
-void DatabasePublisherList::RemovePrefixes(
-    PrefixIterator begin,
-    PrefixIterator end,
-    ledger::ResultCallback callback) {
-  auto transaction = ledger::DBTransaction::New();
-  AddDeleteCommand(GetPrefixSearchList(begin, end), transaction.get());
-  ledger_->RunDBTransaction(
-      std::move(transaction),
-      std::bind(&OnResultCallback, _1, callback));
-}
-
 void DatabasePublisherList::ResetPrefixes(
-    PrefixIterator begin,
-    PrefixIterator end,
+    std::unique_ptr<braveledger_publisher::PublisherListReader> reader,
     ledger::ResultCallback callback) {
   auto transaction = ledger::DBTransaction::New();
-  DropAndCreateTable(transaction.get());
+
+  AddDropAndCreateTableCommand(transaction.get());
+
   // TODO(zenparsing): Building the full insert command will expand
   // the memory requirement by a factor of 4. We should perhaps set
   // a batch limit instead. The problem with that approach is that
   // we then have to store the remainder of the prefix list between
   // calls. So we still need to make a copy of at least the whole
   // byte string.
-  AddInsertCommand(GetPrefixInsertList(begin, end), transaction.get());
+  std::string value_list = GetPrefixInsertList(reader->begin(), reader->end());
+
+  auto command = ledger::DBCommand::New();
+  command->type = ledger::DBCommand::Type::RUN;
+  command->command = base::StringPrintf(
+      "INSERT OR REPLACE INTO %s (hash_prefix) VALUES %s",
+      kTableName,
+      value_list.data());
+
+  transaction->commands.push_back(std::move(command));
+
   ledger_->RunDBTransaction(
       std::move(transaction),
       std::bind(&OnResultCallback, _1, callback));

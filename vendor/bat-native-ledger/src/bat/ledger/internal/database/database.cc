@@ -23,6 +23,7 @@
 #include "bat/ledger/internal/database/database_sku_transaction.h"
 #include "bat/ledger/internal/database/database_unblinded_token.h"
 #include "bat/ledger/internal/ledger_impl.h"
+#include "bat/ledger/internal/publisher/publisher_list_reader.h"
 
 namespace braveledger_database {
 
@@ -411,11 +412,10 @@ void Database::SearchPublisherList(
   publisher_list_->Search(publisher_prefix, callback);
 }
 
-void Database::ResetPublisherList(
-    braveledger_publisher::PrefixIterator begin,
-    braveledger_publisher::PrefixIterator end,
+void Database::ResetPublisherList(\
+    std::unique_ptr<braveledger_publisher::PublisherListReader> reader,
     ledger::ResultCallback callback) {
-  publisher_list_->ResetPrefixes(begin, end, callback);
+  publisher_list_->ResetPrefixes(std::move(reader), callback);
 }
 
 void Database::InsertServerPublisherInfo(

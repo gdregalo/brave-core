@@ -206,7 +206,7 @@ void ServerPublisherFetcher::RunCallbacks(
     const std::string& publisher_key,
     ledger::ServerPublisherInfoPtr server_info) {
   CallbackVector callbacks = GetCallbacks(publisher_key);
-  DCHECK(callbacks.size() > 0);
+  DCHECK_GT(callbacks.size(), 0UL);
   for (auto& callback : callbacks) {
     callback(server_info ? server_info->Clone() : nullptr);
   }

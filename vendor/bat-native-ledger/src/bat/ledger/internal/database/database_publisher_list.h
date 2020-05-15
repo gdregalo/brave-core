@@ -7,10 +7,11 @@
 #define BRAVELEDGER_DATABASE_DATABASE_PUBLISHER_LIST_H_
 
 #include <functional>
+#include <memory>
 #include <string>
 
 #include "bat/ledger/internal/database/database_table.h"
-#include "bat/ledger/internal/publisher/prefix_iterator.h"
+#include "bat/ledger/internal/publisher/publisher_list_reader.h"
 
 namespace braveledger_database {
 
@@ -21,19 +22,8 @@ class DatabasePublisherList: public DatabaseTable {
 
   bool Migrate(ledger::DBTransaction* transaction, int target) override;
 
-  void InsertPrefixes(
-      braveledger_publisher::PrefixIterator begin,
-      braveledger_publisher::PrefixIterator end,
-      ledger::ResultCallback callback);
-
-  void RemovePrefixes(
-      braveledger_publisher::PrefixIterator begin,
-      braveledger_publisher::PrefixIterator end,
-      ledger::ResultCallback callback);
-
   void ResetPrefixes(
-      braveledger_publisher::PrefixIterator begin,
-      braveledger_publisher::PrefixIterator end,
+      std::unique_ptr<braveledger_publisher::PublisherListReader> reader,
       ledger::ResultCallback callback);
 
   void Search(

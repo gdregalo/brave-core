@@ -5,6 +5,9 @@
 
 #include "bat/ledger/internal/publisher/publisher_list_fetcher.h"
 
+#include <memory>
+#include <utility>
+
 #include "bat/ledger/internal/ledger_impl.h"
 #include "bat/ledger/internal/publisher/publisher_list_reader.h"
 #include "bat/ledger/internal/request/request_publisher.h"
@@ -69,12 +72,12 @@ void PublisherListFetcher::OnFetchCompleted(
     return;
   }
 
-  PublisherListReader reader;
-  auto parse_error = reader.Parse(response);
+  auto reader = std::make_unique<PublisherListReader>();
+  auto parse_error = reader->Parse(response);
   if (parse_error != PublisherListReader::ParseError::None) {
     // TODO(zenparsing): Log error - invalid protobuf message.
     // This could be a problem on the client or the server, but
-    // optimistically assume that it's a server issue and retry
+    // optimistically assume that it is a server issue and retry
     // with back-off.
     StartFetchTimer(FROM_HERE, GetRetryAfterFailureDelay());
     return;
@@ -90,8 +93,7 @@ void PublisherListFetcher::OnFetchCompleted(
   retry_count_ = 0;
 
   ledger_->ResetPublisherList(
-      reader.begin(),
-      reader.end(),
+      std::move(reader),
       std::bind(&PublisherListFetcher::OnDatabaseUpdated, this, _1));
 
   if (auto_update_) {

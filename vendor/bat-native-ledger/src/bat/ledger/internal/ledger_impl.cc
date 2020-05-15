@@ -21,6 +21,7 @@
 #include "bat/ledger/internal/media/media.h"
 #include "bat/ledger/internal/common/time_util.h"
 #include "bat/ledger/internal/publisher/publisher.h"
+#include "bat/ledger/internal/publisher/publisher_list_reader.h"
 #include "bat/ledger/internal/bat_helper.h"
 #include "bat/ledger/internal/bat_state.h"
 #include "bat/ledger/internal/promotion/promotion.h"
@@ -1389,10 +1390,9 @@ void LedgerImpl::SearchPublisherList(
 }
 
 void LedgerImpl::ResetPublisherList(
-    braveledger_publisher::PrefixIterator begin,
-    braveledger_publisher::PrefixIterator end,
+    std::unique_ptr<braveledger_publisher::PublisherListReader> reader,
     ledger::ResultCallback callback) {
-  bat_database_->ResetPublisherList(begin, end, callback);
+  bat_database_->ResetPublisherList(std::move(reader), callback);
 }
 
 void LedgerImpl::InsertServerPublisherInfo(

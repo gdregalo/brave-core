@@ -12,11 +12,14 @@
 #include <string>
 #include <vector>
 
-#include "bat/ledger/internal/publisher/prefix_iterator.h"
 #include "bat/ledger/ledger.h"
 
 namespace bat_ledger {
 class LedgerImpl;
+}
+
+namespace braveledger_publisher {
+class PublisherListReader;
 }
 
 namespace braveledger_database {
@@ -282,8 +285,7 @@ class Database {
       ledger::SearchPublisherListCallback callback);
 
   void ResetPublisherList(
-      braveledger_publisher::PrefixIterator begin,
-      braveledger_publisher::PrefixIterator end,
+      std::unique_ptr<braveledger_publisher::PublisherListReader> reader,
       ledger::ResultCallback callback);
 
   void InsertServerPublisherInfo(

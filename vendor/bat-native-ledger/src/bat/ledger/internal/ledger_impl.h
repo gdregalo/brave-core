@@ -20,7 +20,6 @@
 #include "bat/ledger/internal/database/database.h"
 #include "bat/ledger/internal/logging.h"
 #include "bat/ledger/internal/properties/wallet_info_properties.h"
-#include "bat/ledger/internal/publisher/prefix_iterator.h"
 #include "bat/ledger/internal/wallet/wallet.h"
 #include "bat/ledger/ledger_client.h"
 #include "bat/ledger/ledger.h"
@@ -39,6 +38,7 @@ class Media;
 
 namespace braveledger_publisher {
 class Publisher;
+class PublisherListReader;
 }
 
 namespace braveledger_bat_state {
@@ -479,8 +479,7 @@ class LedgerImpl : public ledger::Ledger {
       ledger::SearchPublisherListCallback callback);
 
   void ResetPublisherList(
-      braveledger_publisher::PrefixIterator begin,
-      braveledger_publisher::PrefixIterator end,
+      std::unique_ptr<braveledger_publisher::PublisherListReader> reader,
       ledger::ResultCallback callback);
 
   void InsertServerPublisherInfo(
