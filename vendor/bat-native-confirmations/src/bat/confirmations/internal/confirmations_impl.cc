@@ -659,7 +659,8 @@ bool ConfirmationsImpl::GetTransactionHistoryFromDictionary(
           MigrateTimestampToDoubleT(timestamp_in_seconds);
     } else {
       // timestamp missing, fallback to default
-      info.timestamp_in_seconds = base::Time::Now().ToDoubleT();
+      info.timestamp_in_seconds =
+          static_cast<uint64_t>(base::Time::Now().ToDoubleT());
     }
 
     // Estimated redemption value
@@ -997,7 +998,8 @@ void ConfirmationsImpl::GetTransactionHistory(
   transactions_info->ad_notifications_received_this_month =
       ad_notifications_received_this_month;
 
-  auto to_timestamp_in_seconds = base::Time::Now().ToDoubleT();
+  auto to_timestamp_in_seconds =
+      static_cast<uint64_t>(base::Time::Now().ToDoubleT());
   auto transactions = GetTransactionHistory(0, to_timestamp_in_seconds);
   transactions_info->transactions = transactions;
 
@@ -1128,7 +1130,8 @@ void ConfirmationsImpl::AppendTransactionToHistory(
   DCHECK(state_has_loaded_);
 
   TransactionInfo info;
-  info.timestamp_in_seconds = base::Time::Now().ToDoubleT();
+  info.timestamp_in_seconds =
+      static_cast<uint64_t>(base::Time::Now().ToDoubleT());
   info.estimated_redemption_value = estimated_redemption_value;
   info.confirmation_type = std::string(confirmation_type);
 
