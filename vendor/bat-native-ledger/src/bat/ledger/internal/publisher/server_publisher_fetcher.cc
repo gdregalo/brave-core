@@ -7,6 +7,7 @@
 
 #include <utility>
 
+#include "base/big_endian.h"
 #include "base/json/json_reader.h"
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
@@ -75,16 +76,10 @@ ledger::PublisherBannerPtr PublisherBannerFromMessage(
   return banner;
 }
 
-ledger::ServerPublisherInfoPtr ServerPublisherInfoFromString(
-    const std::string& response,
+ledger::ServerPublisherInfoPtr ServerPublisherInfoFromMessage(
+    const publishers_pb::ChannelResponses& message,
     const std::string& expected_key) {
-  publishers_pb::ChannelResponses channel_responses;
-  if (!channel_responses.ParseFromString(response)) {
-    // TODO(zenparsing): Log error - unable to parse protobuf
-    return nullptr;
-  }
-
-  for (auto& entry : channel_responses.channel_response()) {
+  for (auto& entry : message.channel_response()) {
     if (entry.channel_identifier() != expected_key) {
       continue;
     }
@@ -106,6 +101,32 @@ ledger::ServerPublisherInfoPtr ServerPublisherInfoFromString(
   }
 
   return nullptr;
+}
+
+// TODO(zenparsing): This is actually in components/brave_private_cdn
+// but I'm not sure how we can use it from here.
+bool RemovePadding(std::string* padded_string) {
+  if (!padded_string) {
+    return false;
+  }
+
+  if (padded_string->size() < sizeof(uint32_t)) {
+    return false;  // Missing length field
+  }
+
+  // Read payload length from the header.
+  uint32_t data_length;
+  base::ReadBigEndian(padded_string->c_str(), &data_length);
+
+  // Remove length header.
+  padded_string->erase(0, sizeof(uint32_t));
+  if (padded_string->size() < data_length) {
+    return false;  // Payload shorter than expected length
+  }
+
+  // Remove padding.
+  padded_string->resize(data_length);
+  return true;
 }
 
 }  // namespace
@@ -146,15 +167,11 @@ void ServerPublisherFetcher::OnFetchCompleted(
     int response_status_code,
     const std::string& response,
     const std::map<std::string, std::string>& headers) {
-  if (response_status_code != net::HTTP_OK || response.empty()) {
-    if (response_status_code != net::HTTP_NOT_FOUND) {
-      // TODO(zenparsing): Log error - unexpected server response
-    }
-    RunCallbacks(publisher_key, nullptr);
-    return;
-  }
+  auto server_info = ParseResponse(
+      publisher_key,
+      response_status_code,
+      response);
 
-  auto server_info = ServerPublisherInfoFromString(response, publisher_key);
   if (server_info) {
     ledger_->InsertServerPublisherInfo(*server_info, [](ledger::Result) {});
   }
@@ -164,6 +181,32 @@ void ServerPublisherFetcher::OnFetchCompleted(
   // again?
 
   RunCallbacks(publisher_key, std::move(server_info));
+}
+
+ledger::ServerPublisherInfoPtr ServerPublisherFetcher::ParseResponse(
+    const std::string& publisher_key,
+    int response_status_code,
+    const std::string& response) {
+  if (response_status_code != net::HTTP_OK || response.empty()) {
+    if (response_status_code != net::HTTP_NOT_FOUND) {
+      // TODO(zenparsing): Log error - unexpected server response
+    }
+    return nullptr;
+  }
+
+  std::string response_data = response;
+  if (!RemovePadding(&response_data)) {
+    // TODO(zenparsing): Log error - invalid padding
+    return nullptr;
+  }
+
+  publishers_pb::ChannelResponses message;
+  if (!message.ParseFromString(response_data)) {
+    // TODO(zenparsing): Log error - unable to parse protobuf
+    return nullptr;
+  }
+
+  return ServerPublisherInfoFromMessage(message, publisher_key);
 }
 
 bool ServerPublisherFetcher::IsExpired(

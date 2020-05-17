@@ -11,7 +11,7 @@ namespace braveledger_request_util {
 
 std::string GetPublisherListUrl() {
   // TODO(zenparsing): Use BuildUrl
-  return "http://localhost:3000/publisher_list.pb";
+  return "http://localhost:3000/publishers";
 }
 
 std::string GetPublisherInfoUrl(const std::string& hash_prefix) {

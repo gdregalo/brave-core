@@ -15,6 +15,7 @@ message SocialLinks {
   string twitch = 3;
 }
 
+// Maybe SiteBanner
 message SiteBannerDetails {
   string title = 1;
   string description = 2;
@@ -30,6 +31,8 @@ enum WalletConnectedState {
   UPHOLD_ACCOUNT_KYC = 2;
 }
 
+// Maybe Channel?
+// Why do we call them channels here and publishers there?
 message ChannelResponse {
   string channel_identifier = 1;
   WalletConnectedState wallet_connected_state = 2;
@@ -38,6 +41,7 @@ message ChannelResponse {
   SiteBannerDetails site_banner_details = 5;
 }
 
+// Maybe ChannelResponse?
 message ChannelResponses {
   repeated ChannelResponse channel_response = 1;
 }

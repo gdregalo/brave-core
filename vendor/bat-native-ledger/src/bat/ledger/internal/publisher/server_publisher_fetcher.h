@@ -46,6 +46,11 @@ class ServerPublisherFetcher {
       const std::string& response,
       const std::map<std::string, std::string>& headers);
 
+  ledger::ServerPublisherInfoPtr ParseResponse(
+      const std::string& publisher_key,
+      int response_status_code,
+      const std::string& response);
+
   CallbackVector GetCallbacks(const std::string& publisher_key);
 
   void RunCallbacks(

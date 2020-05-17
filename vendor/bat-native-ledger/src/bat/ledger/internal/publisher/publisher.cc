@@ -153,6 +153,11 @@ void Publisher::SaveVisit(
       // is in the index but we can't fetch the data. In that case,
       // we'd keep requesting from the server. We might need a backoff
       // in that case.
+      // TODO(zenparsing): What if publisher exists in the prefix list
+      // but we can't fetch a record for them? In that case, our prefix
+      // list might be outdated or we may have a false positive. We
+      // should log it (and hopefully record metrics for how many times
+      // this happens).
       ledger_->GetServerPublisherInfo(publisher_key, on_server_info);
     } else {
       on_server_info(nullptr);
