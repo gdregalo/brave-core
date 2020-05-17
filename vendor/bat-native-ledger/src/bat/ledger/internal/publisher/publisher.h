@@ -25,7 +25,7 @@ struct PublisherSettings;
 
 namespace braveledger_publisher {
 
-class PublisherListFetcher;
+class PublisherListUpdater;
 class ServerPublisherFetcher;
 
 class Publisher {
@@ -229,7 +229,7 @@ class Publisher {
 
   bat_ledger::LedgerImpl* ledger_;  // NOT OWNED
   std::unique_ptr<ledger::PublisherSettingsProperties> state_;
-  std::unique_ptr<PublisherListFetcher> publisher_list_fetcher_;
+  std::unique_ptr<PublisherListUpdater> publisher_list_updater_;
   std::unique_ptr<ServerPublisherFetcher> server_publisher_fetcher_;
 
   double a_;

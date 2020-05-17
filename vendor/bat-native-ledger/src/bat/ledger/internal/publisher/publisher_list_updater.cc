@@ -3,7 +3,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "bat/ledger/internal/publisher/publisher_list_fetcher.h"
+#include "bat/ledger/internal/publisher/publisher_list_updater.h"
 
 #include <memory>
 #include <utility>
@@ -29,40 +29,40 @@ constexpr uint64_t kMaxRetryAfterFailureDelay = 60 * 60 * 4;
 
 namespace braveledger_publisher {
 
-PublisherListFetcher::PublisherListFetcher(bat_ledger::LedgerImpl* ledger)
+PublisherListUpdater::PublisherListUpdater(bat_ledger::LedgerImpl* ledger)
     : ledger_(ledger) {}
 
-PublisherListFetcher::~PublisherListFetcher() = default;
+PublisherListUpdater::~PublisherListUpdater() = default;
 
-void PublisherListFetcher::StartAutoUpdate() {
+void PublisherListUpdater::StartAutoUpdate() {
   auto_update_ = true;
   if (!timer_.IsRunning()) {
     StartFetchTimer(FROM_HERE, GetAutoUpdateDelay());
   }
 }
 
-void PublisherListFetcher::StopAutoUpdate() {
+void PublisherListUpdater::StopAutoUpdate() {
   auto_update_ = false;
   timer_.Stop();
 }
 
-void PublisherListFetcher::StartFetchTimer(
+void PublisherListUpdater::StartFetchTimer(
     const base::Location& posted_from,
     base::TimeDelta delay) {
   timer_.Start(posted_from, delay, base::BindOnce(
-      &PublisherListFetcher::OnFetchTimerElapsed,
+      &PublisherListUpdater::OnFetchTimerElapsed,
       base::Unretained(this)));
 }
 
-void PublisherListFetcher::OnFetchTimerElapsed() {
+void PublisherListUpdater::OnFetchTimerElapsed() {
   std::string url = braveledger_request_util::GetPublisherListUrl();
   ledger_->LoadURL(
       url, {}, "", "",
       ledger::UrlMethod::GET,
-      std::bind(&PublisherListFetcher::OnFetchCompleted, this, _1, _2, _3));
+      std::bind(&PublisherListUpdater::OnFetchCompleted, this, _1, _2, _3));
 }
 
-void PublisherListFetcher::OnFetchCompleted(
+void PublisherListUpdater::OnFetchCompleted(
     int response_status_code,
     const std::string& response,
     const std::map<std::string, std::string>& headers) {
@@ -94,18 +94,18 @@ void PublisherListFetcher::OnFetchCompleted(
 
   ledger_->ResetPublisherList(
       std::move(reader),
-      std::bind(&PublisherListFetcher::OnDatabaseUpdated, this, _1));
+      std::bind(&PublisherListUpdater::OnDatabaseUpdated, this, _1));
 
   if (auto_update_) {
     StartFetchTimer(FROM_HERE, GetAutoUpdateDelay());
   }
 }
 
-void PublisherListFetcher::OnDatabaseUpdated(ledger::Result result) {
+void PublisherListUpdater::OnDatabaseUpdated(ledger::Result result) {
   // TODO(zenparsing): Log error - Unable to update database
 }
 
-base::TimeDelta PublisherListFetcher::GetAutoUpdateDelay() {
+base::TimeDelta PublisherListUpdater::GetAutoUpdateDelay() {
   uint64_t last_fetch_sec =
       ledger_->GetUint64State(ledger::kStateServerPublisherListStamp);
   uint64_t interval_sec =
@@ -125,7 +125,7 @@ base::TimeDelta PublisherListFetcher::GetAutoUpdateDelay() {
       : fetch_time - now;
 }
 
-base::TimeDelta PublisherListFetcher::GetRetryAfterFailureDelay() {
+base::TimeDelta PublisherListUpdater::GetRetryAfterFailureDelay() {
   uint64_t seconds = brave_base::random::Geometric(kRetryAfterFailureDelay);
   seconds <<= retry_count_;
   retry_count_ += 1;

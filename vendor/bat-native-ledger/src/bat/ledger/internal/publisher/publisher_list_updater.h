@@ -3,8 +3,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef BRAVELEDGER_PUBLISHER_PUBLISHER_LIST_FETCHER_H_
-#define BRAVELEDGER_PUBLISHER_PUBLISHER_LIST_FETCHER_H_
+#ifndef BRAVELEDGER_PUBLISHER_PUBLISHER_LIST_UPDATER_H_
+#define BRAVELEDGER_PUBLISHER_PUBLISHER_LIST_UPDATER_H_
 
 #include <functional>
 #include <map>
@@ -19,14 +19,14 @@ class LedgerImpl;
 
 namespace braveledger_publisher {
 
-class PublisherListFetcher {
+class PublisherListUpdater {
  public:
-  explicit PublisherListFetcher(bat_ledger::LedgerImpl* ledger);
+  explicit PublisherListUpdater(bat_ledger::LedgerImpl* ledger);
 
-  PublisherListFetcher(const PublisherListFetcher&) = delete;
-  PublisherListFetcher& operator=(const PublisherListFetcher&) = delete;
+  PublisherListUpdater(const PublisherListUpdater&) = delete;
+  PublisherListUpdater& operator=(const PublisherListUpdater&) = delete;
 
-  ~PublisherListFetcher();
+  ~PublisherListUpdater();
 
   void StartAutoUpdate();
 
@@ -57,4 +57,4 @@ class PublisherListFetcher {
 
 }  // namespace braveledger_publisher
 
-#endif  // BRAVELEDGER_PUBLISHER_PUBLISHER_LIST_FETCHER_H_
+#endif  // BRAVELEDGER_PUBLISHER_PUBLISHER_LIST_UPDATER_H_

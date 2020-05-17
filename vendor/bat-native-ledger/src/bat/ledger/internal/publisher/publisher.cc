@@ -18,7 +18,7 @@
 #include "bat/ledger/internal/properties/report_balance_properties.h"
 #include "bat/ledger/internal/publisher/prefix_util.h"
 #include "bat/ledger/internal/publisher/publisher.h"
-#include "bat/ledger/internal/publisher/publisher_list_fetcher.h"
+#include "bat/ledger/internal/publisher/publisher_list_updater.h"
 #include "bat/ledger/internal/publisher/server_publisher_fetcher.h"
 #include "bat/ledger/internal/state/publisher_settings_state.h"
 #include "bat/ledger/internal/static_values.h"
@@ -44,8 +44,8 @@ namespace braveledger_publisher {
 Publisher::Publisher(bat_ledger::LedgerImpl* ledger)
   : ledger_(ledger),
     state_(new ledger::PublisherSettingsProperties),
-    publisher_list_fetcher_(
-        std::make_unique<PublisherListFetcher>(ledger)),
+    publisher_list_updater_(
+        std::make_unique<PublisherListUpdater>(ledger)),
     server_publisher_fetcher_(
         std::make_unique<ServerPublisherFetcher>(ledger)) {
   calcScoreConsts(state_->min_page_time_before_logging_a_visit);
@@ -79,9 +79,9 @@ void Publisher::RefreshPublisher(
 
 void Publisher::SetPublisherServerListTimer(const bool rewards_enabled) {
   if (rewards_enabled) {
-    publisher_list_fetcher_->StartAutoUpdate();
+    publisher_list_updater_->StartAutoUpdate();
   } else {
-    publisher_list_fetcher_->StopAutoUpdate();
+    publisher_list_updater_->StopAutoUpdate();
   }
 }
 
